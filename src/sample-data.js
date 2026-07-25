@@ -89,9 +89,9 @@ function sampleData() {
     analysis.push({
       shpca_id: 9000 + id,
       shpca_shpc_id: id,
-      shpca_c_1: routed ? plan.dep : '',
-      shpca_c_2: routed ? plan.dom : '',
-      shpca_c_3: forwarder,
+      shpca_c_1: routed ? plan.dom : '',
+      shpca_c_2: forwarder,
+      shpca_c_3: routed ? plan.dep : '',
       shpca_c_4: forwarder === 'GEMINI (TRANSGLOBAL)' ? `GT-51${String(id).padStart(2, '0')}` : forwarder === 'DSV (Via UBT)' ? `UBT-88${id}` : `BC-19${id}`,
       shpca_c_5: `PO10${400 + id}`,
       shpca_c_6: plan ? plan.supplier : 'Various',
