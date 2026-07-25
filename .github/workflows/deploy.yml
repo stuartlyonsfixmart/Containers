@@ -1,0 +1,46 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  SERVICE: containers-dashboard
+  REGION: ${{ vars.GCP_REGION || 'europe-west2' }}
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check CI is configured
+        run: |
+          if [ -z "${{ secrets.GCP_WIF_PROVIDER }}" ] || [ -z "${{ secrets.GCP_DEPLOY_SA }}" ] || [ -z "${{ vars.GCP_PROJECT_ID }}" ]; then
+            echo "::error::Push-to-deploy is not configured yet. Set repo secrets GCP_WIF_PROVIDER and GCP_DEPLOY_SA and repo variable GCP_PROJECT_ID. See README section 'Push-to-deploy from GitHub'."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOY_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy
+        run: |
+          gcloud run deploy "$SERVICE" \
+            --source . \
+            --project "$PROJECT_ID" \
+            --region "$REGION" \
+            --service-account "containers-dashboard@${PROJECT_ID}.iam.gserviceaccount.com" \
+            --set-env-vars "DATA_MODE=bigquery,BQ_PROJECT=${PROJECT_ID},BQ_DATASET=${{ vars.BQ_DATASET || 'fixmart_bi' }}" \
+            --quiet
