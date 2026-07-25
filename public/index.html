@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%231B365D'/%3E%3C/svg%3E">
+<title>Freight Forwarding Import Dashboard</title>
+<style>
+  :root {
+    --navy: #1B365D;
+    --bar-grey: #bcc3cd;
+    --bar-grey-soft: #dde1e7;
+    --ink: #1f2733;
+    --ink-2: #5b6472;
+    --ink-3: #8a93a2;
+    --surface: #ffffff;
+    --page: #f6f7f9;
+    --hairline: #e6e9ee;
+    --warn-bg: #fdf3d7;
+    --warn-ink: #8a5a06;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  header {
+    background: var(--navy);
+    color: #fff;
+    padding: 18px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  header h1 { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: .1px; }
+  header .sub { margin-top: 3px; font-size: 12px; color: rgba(255,255,255,.72); }
+  .header-actions { display: flex; align-items: center; gap: 10px; }
+  .badge-sample {
+    background: var(--warn-bg); color: var(--warn-ink);
+    font-size: 11px; font-weight: 650; letter-spacing: .3px;
+    padding: 4px 10px; border-radius: 999px;
+  }
+  button.refresh {
+    background: transparent; color: #fff;
+    border: 1px solid rgba(255,255,255,.45);
+    border-radius: 7px; padding: 7px 14px;
+    font: inherit; font-size: 13px; cursor: pointer;
+  }
+  button.refresh:hover { background: rgba(255,255,255,.1); }
+  main { max-width: 1240px; margin: 0 auto; padding: 22px 28px 48px; }
+
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 12px;
+  }
+  .tile {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    padding: 14px 16px 12px;
+  }
+  .tile .label { font-size: 11px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; color: var(--ink-3); }
+  .tile .value { font-size: 26px; font-weight: 650; margin-top: 4px; color: var(--ink); }
+  .tile .subnote { font-size: 11.5px; color: var(--ink-3); margin-top: 2px; }
+
+  .filters {
+    display: flex; align-items: center; gap: 10px;
+    margin: 18px 0 14px;
+    flex-wrap: wrap;
+  }
+  .filters label { font-size: 12.5px; color: var(--ink-2); font-weight: 600; }
+  .filters select {
+    font: inherit; font-size: 13px; color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--hairline); border-radius: 7px;
+    padding: 7px 10px; min-width: 260px;
+  }
+  .filters .scope-note { font-size: 12px; color: var(--ink-3); }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    align-items: start;
+  }
+  @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    padding: 16px 18px 14px;
+    min-width: 0;
+  }
+  .card.wide { grid-column: 1 / -1; }
+  .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .card-head h2 { margin: 0; font-size: 14.5px; font-weight: 650; }
+  .card-head .hint { font-size: 11.5px; color: var(--ink-3); font-weight: 400; margin-left: 6px; }
+  .card-tools { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .legend { display: flex; gap: 12px; font-size: 11.5px; color: var(--ink-2); }
+  .legend .key { display: inline-flex; align-items: center; gap: 5px; }
+  .legend .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .toggle { display: inline-flex; border: 1px solid var(--hairline); border-radius: 7px; overflow: hidden; }
+  .toggle button {
+    font: inherit; font-size: 11px; padding: 3px 9px; border: 0;
+    background: var(--surface); color: var(--ink-3); cursor: pointer;
+  }
+  .toggle button.active { background: #eef1f5; color: var(--ink); font-weight: 600; }
+  .chart-body { margin-top: 12px; position: relative; }
+  .chart-body.loading { opacity: .45; transition: opacity .2s; }
+  svg { display: block; overflow: visible; }
+  svg text { font-family: inherit; }
+  .footnote { font-size: 11.5px; color: var(--ink-3); margin-top: 10px; }
+  .empty {
+    font-size: 13px; color: var(--ink-2); font-style: italic;
+    padding: 26px 12px; text-align: center;
+  }
+
+  table.twin { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.twin th {
+    text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .4px;
+    color: var(--ink-3); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--hairline);
+  }
+  table.twin td { padding: 6px 8px; border-bottom: 1px solid var(--hairline); color: var(--ink); }
+  table.twin td.num, table.twin th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  #tooltip {
+    position: fixed; z-index: 50; pointer-events: none;
+    background: #232a35; color: #fff;
+    border-radius: 8px; padding: 8px 11px;
+    font-size: 12px; line-height: 1.5;
+    max-width: 300px;
+    box-shadow: 0 4px 14px rgba(15,23,42,.25);
+    display: none;
+  }
+  #tooltip .t-value { font-size: 13.5px; font-weight: 650; }
+  #tooltip .t-row { color: rgba(255,255,255,.82); }
+  #error {
+    display: none; margin: 14px 0; padding: 12px 16px;
+    background: #fdecec; color: #8c2f2f;
+    border: 1px solid #f3c8c8; border-radius: 8px; font-size: 13px;
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Freight Forwarding Import Dashboard</h1>
+    <div class="sub" id="meta-line">Loading…</div>
+  </div>
+  <div class="header-actions">
+    <span class="badge-sample" id="sample-badge" style="display:none">Sample data · not connected to BigQuery</span>
+    <button class="refresh" id="refresh-btn" type="button">Refresh data</button>
+  </div>
+</header>
+
+<main>
+  <div id="error"></div>
+  <section class="kpis" id="kpis"></section>
+
+  <div class="filters">
+    <label for="route-filter">Route</label>
+    <select id="route-filter"></select>
+    <span class="scope-note">Filters the charts below · headline figures above stay whole-book</span>
+  </div>
+
+  <section class="grid">
+    <div class="card" id="card-forwarders"></div>
+    <div class="card" id="card-routes"></div>
+    <div class="card wide" id="card-trend"></div>
+    <div class="card" id="card-split"></div>
+    <div class="card" id="card-transit"></div>
+  </section>
+</main>
+
+<div id="tooltip"></div>
+
+<script>
+'use strict';
+
+/* ---------- state & utilities ---------- */
+
+const state = { data: null, route: 'all', views: {} };
+
+const NAVY = getComputedStyle(document.documentElement).getPropertyValue('--navy').trim() || '#1B365D';
+const GREY = getComputedStyle(document.documentElement).getPropertyValue('--bar-grey').trim() || '#bcc3cd';
+const INK2 = '#5b6472', INK3 = '#8a93a2', HAIR = '#e6e9ee';
+
+const fmtGBP = (v) => v == null ? '–' : '£' + Math.round(v).toLocaleString('en-GB');
+const fmtNum = (v) => v == null ? '–' : Number(v).toLocaleString('en-GB');
+const fmtWeeks = (v) => v == null ? '–' : (Math.round(v * 10) / 10).toLocaleString('en-GB', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const fmtDate = (iso) => {
+  if (!iso) return '–';
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+const fmtDateTime = (iso) => {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ', ' +
+         d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+};
+
+function el(tag, attrs, parent) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (k === 'text') node.textContent = v;
+    else if (k === 'class') node.className = v;
+    else node.setAttribute(k, v);
+  }
+  if (parent) parent.appendChild(node);
+  return node;
+}
+function svgEl(tag, attrs, parent) {
+  const node = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (k === 'text') node.textContent = v;
+    else node.setAttribute(k, v);
+  }
+  if (parent) parent.appendChild(node);
+  return node;
+}
+// Horizontal bar with a 4px rounded data-end, square at the baseline.
+function barPath(x, y, w, h, r) {
+  const rr = Math.min(r, w, h / 2);
+  return `M${x},${y} h${w - rr} a${rr},${rr} 0 0 1 ${rr},${rr} v${h - 2 * rr} a${rr},${rr} 0 0 1 ${-rr},${rr} h${-(w - rr)} Z`;
+}
+function niceCeil(v) {
+  if (v <= 0) return 1;
+  const pow = Math.pow(10, Math.floor(Math.log10(v)));
+  for (const m of [1, 2, 2.5, 4, 5, 10]) if (v <= m * pow) return m * pow;
+  return 10 * pow;
+}
+
+/* ---------- tooltip (textContent only; labels are untrusted data) ---------- */
+
+const tip = document.getElementById('tooltip');
+function showTip(evt, lines) {
+  tip.textContent = '';
+  lines.forEach((line, i) => {
+    const row = el('div', { class: i === 0 ? 't-value' : 't-row' }, tip);
+    row.textContent = line;
+  });
+  tip.style.display = 'block';
+  moveTip(evt);
+}
+function moveTip(evt) {
+  const pad = 14;
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  let x = evt.clientX + pad, y = evt.clientY + pad;
+  if (x + w > window.innerWidth - 8) x = evt.clientX - w - pad;
+  if (y + h > window.innerHeight - 8) y = evt.clientY - h - pad;
+  tip.style.left = x + 'px';
+  tip.style.top = y + 'px';
+}
+function hideTip() { tip.style.display = 'none'; }
+function hover(node, linesFn) {
+  node.addEventListener('pointerenter', (e) => showTip(e, linesFn()));
+  node.addEventListener('pointermove', moveTip);
+  node.addEventListener('pointerleave', hideTip);
+}
+
+/* ---------- card scaffolding with chart/table twin toggle ---------- */
+
+function cardShell(rootId, title, hint, legendItems) {
+  const root = document.getElementById(rootId);
+  root.textContent = '';
+  const head = el('div', { class: 'card-head' }, root);
+  const left = el('div', {}, head);
+  const h2 = el('h2', { text: title }, left);
+  if (hint) el('span', { class: 'hint', text: hint }, h2);
+  const tools = el('div', { class: 'card-tools' }, head);
+  if (legendItems && legendItems.length) {
+    const lg = el('div', { class: 'legend' }, tools);
+    for (const item of legendItems) {
+      const key = el('span', { class: 'key' }, lg);
+      el('span', { class: 'dot', style: `background:${item.color}` }, key);
+      el('span', { text: item.label }, key);
+    }
+  }
+  const toggle = el('div', { class: 'toggle' }, tools);
+  const btnChart = el('button', { type: 'button', text: 'Chart' }, toggle);
+  const btnTable = el('button', { type: 'button', text: 'Table' }, toggle);
+  const body = el('div', { class: 'chart-body' }, root);
+
+  const mode = state.views[rootId] || 'chart';
+  const setMode = (m) => {
+    state.views[rootId] = m;
+    btnChart.classList.toggle('active', m === 'chart');
+    btnTable.classList.toggle('active', m === 'table');
+    render();
+  };
+  btnChart.addEventListener('click', () => setMode('chart'));
+  btnTable.addEventListener('click', () => setMode('table'));
+  btnChart.classList.toggle('active', mode === 'chart');
+  btnTable.classList.toggle('active', mode === 'table');
+  return { root, body, mode };
+}
+
+function renderTwinTable(body, columns, rows) {
+  const t = el('table', { class: 'twin' }, body);
+  const trh = el('tr', {}, el('thead', {}, t));
+  for (const c of columns) el('th', { class: c.num ? 'num' : '', text: c.label }, trh);
+  const tbody = el('tbody', {}, t);
+  for (const r of rows) {
+    const tr = el('tr', {}, tbody);
+    columns.forEach((c, i) => el('td', { class: c.num ? 'num' : '', text: r[i] == null ? '–' : String(r[i]) }, tr));
+  }
+}
+
+function emptyState(body, msg) { el('div', { class: 'empty', text: msg }, body); }
+
+/* ---------- aggregation from per-shipment records ---------- */
+
+function filteredShipments() {
+  const all = state.data.shipments;
+  if (state.route === 'all') return all;
+  if (state.route === '__none__') return all.filter((s) => !s.route);
+  return all.filter((s) => s.route === state.route);
+}
+function groupCount(items, keyFn) {
+  const m = new Map();
+  for (const it of items) {
+    const k = keyFn(it);
+    if (!k) continue;
+    m.set(k, (m.get(k) || 0) + 1);
+  }
+  return [...m.entries()].sort((a, b) => b[1] - a[1]);
+}
+
+/* ---------- charts ---------- */
+
+function renderBarList(body, rows, opts) {
+  // rows: [{ name, value, valueLabel, tipLines }]
+  const width = Math.max(340, body.clientWidth || 480);
+  const labelW = Math.min(300, Math.max(150, width * 0.42));
+  const rowH = 32, barH = 16, gutter = 8, valueW = 86;
+  const height = rows.length * rowH + 4;
+  const svg = svgEl('svg', { width: '100%', viewBox: `0 0 ${width} ${height}` }, body);
+  const maxV = Math.max(...rows.map((r) => r.value), 1);
+  const plotW = width - labelW - gutter - valueW;
+
+  rows.forEach((r, i) => {
+    const y = i * rowH + (rowH - barH) / 2;
+    const w = Math.max(2, (r.value / maxV) * plotW);
+    const color = i === (opts.accentIndex ?? 0) ? NAVY : GREY;
+
+    const lbl = svgEl('text', {
+      x: labelW, y: y + barH / 2 + 4, 'text-anchor': 'end',
+      'font-size': 12, fill: INK2, text: r.name
+    }, svg);
+    lbl.style.pointerEvents = 'none';
+    // truncate long labels to fit the label column
+    let name = r.name;
+    while (lbl.getComputedTextLength && lbl.getComputedTextLength() > labelW - 8 && name.length > 6) {
+      name = name.slice(0, -2);
+      lbl.textContent = name.trimEnd() + '…';
+    }
+
+    svgEl('path', { d: barPath(labelW + gutter, y, w, barH, 4), fill: color }, svg);
+    svgEl('text', {
+      x: labelW + gutter + w + 7, y: y + barH / 2 + 4,
+      'font-size': 12, fill: '#1f2733', 'font-weight': 600, text: r.valueLabel
+    }, svg);
+
+    const hit = svgEl('rect', { x: 0, y: i * rowH, width, height: rowH, fill: 'transparent' }, svg);
+    hover(hit, () => r.tipLines);
+  });
+}
+
+function renderForwarders() {
+  const { body, mode } = cardShell('card-forwarders', 'Forwarder share of business', 'by shipment count', null);
+  const ships = filteredShipments();
+  const counts = groupCount(ships, (s) => s.forwarder);
+  if (!counts.length) return emptyState(body, 'No forwarder recorded on shipments in this view yet.');
+  const total = counts.reduce((a, [, n]) => a + n, 0);
+  const rows = counts.map(([name, n]) => ({
+    name, value: n,
+    valueLabel: `${n} · ${Math.round((n / total) * 1000) / 10}%`,
+    tipLines: [ `${n} shipments (${Math.round((n / total) * 1000) / 10}%)`, name ],
+  }));
+  if (mode === 'table') {
+    renderTwinTable(body, [{ label: 'Forwarder' }, { label: 'Shipments', num: true }, { label: 'Share', num: true }],
+      rows.map((r) => [r.name, fmtNum(r.value), Math.round((r.value / total) * 1000) / 10 + '%']));
+    return;
+  }
+  renderBarList(body, rows, { accentIndex: 0 });
+}
+
+function renderRoutes() {
+  const { body, mode } = cardShell('card-routes', 'Most used routes', 'by shipment count', null);
+  const ships = filteredShipments();
+  const counts = groupCount(ships, (s) => s.route);
+  const noRoute = ships.filter((s) => !s.route).length;
+  if (!counts.length) return emptyState(body, 'No routes captured yet. Departure and domestic port come from the Orderwise analysis fields.');
+  const rows = counts.map(([name, n]) => ({
+    name, value: n, valueLabel: String(n),
+    tipLines: [ `${n} shipment${n === 1 ? '' : 's'}`, name ],
+  }));
+  if (mode === 'table') {
+    renderTwinTable(body, [{ label: 'Route' }, { label: 'Shipments', num: true }],
+      rows.map((r) => [r.name, fmtNum(r.value)]));
+  } else {
+    renderBarList(body, rows, { accentIndex: 0 });
+  }
+  if (noRoute) el('div', { class: 'footnote', text: `${noRoute} shipment${noRoute === 1 ? '' : 's'} with no route captured yet.` }, body);
+}
+
+function renderTrend() {
+  const { body, mode } = cardShell('card-trend', 'Freight cost per shipment over time', 'landed ocean freight by sailing date', null);
+  const ships = filteredShipments().filter((s) => s.shipped && s.freightCost != null);
+  if (!ships.length) return emptyState(body, 'No costed, dated shipments in this view yet.');
+
+  if (mode === 'table') {
+    renderTwinTable(body,
+      [{ label: 'Sailed' }, { label: 'PO' }, { label: 'Route' }, { label: 'Forwarder' }, { label: 'Freight', num: true }, { label: 'Add-ons', num: true }],
+      ships.map((s) => [fmtDate(s.shipped), s.po, s.route || 'No route captured', s.forwarder, fmtGBP(s.freightCost), fmtGBP(s.addOnCost)]));
+    return;
+  }
+
+  const width = Math.max(640, body.clientWidth || 900);
+  const height = 240, padL = 46, padR = 70, padT = 14, padB = 30;
+  const svg = svgEl('svg', { width: '100%', viewBox: `0 0 ${width} ${height}` }, body);
+
+  const times = ships.map((s) => new Date(s.shipped).getTime());
+  const t0 = Math.min(...times), t1 = Math.max(...times);
+  const span = Math.max(t1 - t0, 86400000);
+  const maxY = niceCeil(Math.max(...ships.map((s) => s.freightCost)) * 1.08);
+  const x = (t) => padL + ((t - t0) / span) * (width - padL - padR);
+  const y = (v) => padT + (1 - v / maxY) * (height - padT - padB);
+
+  // baseline + y tick labels (no gridlines)
+  svgEl('line', { x1: padL, y1: y(0), x2: width - padR, y2: y(0), stroke: HAIR, 'stroke-width': 1 }, svg);
+  const step = maxY / 4;
+  for (let i = 0; i <= 4; i += 1) {
+    svgEl('text', { x: padL - 8, y: y(i * step) + 4, 'text-anchor': 'end', 'font-size': 11, fill: INK3, text: fmtGBP(i * step) }, svg);
+  }
+  // month labels along the x axis; day-level endpoints when the range is short
+  let monthLabels = 0;
+  const start = new Date(t0); start.setUTCDate(1);
+  for (let d = new Date(start); d.getTime() <= t1; d.setUTCMonth(d.getUTCMonth() + 1)) {
+    if (d.getTime() < t0 - 86400000 * 15) continue;
+    svgEl('text', { x: x(Math.max(d.getTime(), t0)), y: height - 8, 'font-size': 11, fill: INK3, text: d.toLocaleDateString('en-GB', { month: 'short' }) }, svg);
+    monthLabels += 1;
+  }
+  if (monthLabels < 2) {
+    const short = (t) => new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    svgEl('text', { x: padL, y: height - 8, 'font-size': 11, fill: INK3, text: short(t0) }, svg);
+    if (t1 > t0) svgEl('text', { x: width - padR, y: height - 8, 'text-anchor': 'end', 'font-size': 11, fill: INK3, text: short(t1) }, svg);
+  }
+
+  const maxShip = ships.reduce((a, b) => (b.freightCost > a.freightCost ? b : a));
+  const lastShip = ships.reduce((a, b) => (new Date(b.shipped) > new Date(a.shipped) ? b : a));
+
+  for (const s of ships) {
+    const cx = x(new Date(s.shipped).getTime()), cy = y(s.freightCost);
+    svgEl('circle', { cx, cy, r: 5, fill: NAVY, stroke: '#fff', 'stroke-width': 2 }, svg);
+    const hit = svgEl('circle', { cx, cy, r: 13, fill: 'transparent' }, svg);
+    hover(hit, () => [
+      fmtGBP(s.freightCost) + ' freight',
+      (s.po || s.containerNumber || 'Shipment') + ' · ' + (s.forwarder || 'No forwarder'),
+      s.route || 'No route captured',
+      'Sailed ' + fmtDate(s.shipped) + (s.addOnCost != null ? ' · add-ons ' + fmtGBP(s.addOnCost) : ''),
+      s.onWater ? 'On the water' : (s.status || ''),
+    ].filter(Boolean));
+  }
+  // selective direct labels: the extreme and the latest point only
+  const labelPts = [...new Set([maxShip, lastShip])];
+  for (const s of labelPts) {
+    const cx = x(new Date(s.shipped).getTime()), cy = y(s.freightCost);
+    svgEl('text', { x: cx + 10, y: cy + 4, 'font-size': 11.5, 'font-weight': 600, fill: '#1f2733', text: fmtGBP(s.freightCost) }, svg);
+  }
+}
+
+function renderSplit() {
+  const { body, mode } = cardShell('card-split', 'Freight vs add-on costs', 'avg per shipment by route',
+    [{ label: 'Freight', color: NAVY }, { label: 'Add-ons', color: GREY }]);
+  const ships = filteredShipments().filter((s) => s.route && s.totalCost != null);
+  if (!ships.length) return emptyState(body, 'No costed shipments with routes in this view yet.');
+
+  const byRoute = new Map();
+  for (const s of ships) {
+    if (!byRoute.has(s.route)) byRoute.set(s.route, { n: 0, freight: 0, addOn: 0 });
+    const r = byRoute.get(s.route);
+    r.n += 1; r.freight += s.freightCost || 0; r.addOn += s.addOnCost || 0;
+  }
+  const rows = [...byRoute.entries()]
+    .map(([route, r]) => ({ route, n: r.n, freight: r.freight / r.n, addOn: r.addOn / r.n }))
+    .sort((a, b) => (b.freight + b.addOn) - (a.freight + a.addOn))
+    .slice(0, 8);
+
+  if (mode === 'table') {
+    renderTwinTable(body,
+      [{ label: 'Route' }, { label: 'Shipments', num: true }, { label: 'Avg freight', num: true }, { label: 'Avg add-ons', num: true }, { label: 'Avg total', num: true }],
+      rows.map((r) => [r.route, fmtNum(r.n), fmtGBP(r.freight), fmtGBP(r.addOn), fmtGBP(r.freight + r.addOn)]));
+    return;
+  }
+
+  const width = Math.max(340, body.clientWidth || 480);
+  const labelW = Math.min(280, Math.max(150, width * 0.44));
+  const rowH = 34, padB = 24;
+  const height = rows.length * rowH + padB;
+  const svg = svgEl('svg', { width: '100%', viewBox: `0 0 ${width} ${height}` }, body);
+  const maxV = niceCeil(Math.max(...rows.map((r) => Math.max(r.freight, r.addOn))) * 1.1);
+  const plotW = width - labelW - 20;
+  const x = (v) => labelW + 10 + (v / maxV) * plotW;
+
+  // x tick labels only, at 0 / half / max
+  for (const v of [0, maxV / 2, maxV]) {
+    svgEl('text', { x: x(v), y: height - 4, 'text-anchor': 'middle', 'font-size': 10.5, fill: INK3, text: fmtGBP(v) }, svg);
+  }
+
+  rows.forEach((r, i) => {
+    const cy = i * rowH + rowH / 2;
+    const lbl = svgEl('text', { x: labelW, y: cy + 4, 'text-anchor': 'end', 'font-size': 12, fill: INK2, text: r.route }, svg);
+    let name = r.route;
+    while (lbl.getComputedTextLength && lbl.getComputedTextLength() > labelW - 8 && name.length > 6) {
+      name = name.slice(0, -2);
+      lbl.textContent = name.trimEnd() + '…';
+    }
+    svgEl('line', { x1: x(Math.min(r.freight, r.addOn)), y1: cy, x2: x(Math.max(r.freight, r.addOn)), y2: cy, stroke: HAIR, 'stroke-width': 1 }, svg);
+    svgEl('circle', { cx: x(r.addOn), cy, r: 5, fill: GREY, stroke: '#fff', 'stroke-width': 2 }, svg);
+    svgEl('circle', { cx: x(r.freight), cy, r: 5, fill: NAVY, stroke: '#fff', 'stroke-width': 2 }, svg);
+    if (i === 0) {
+      svgEl('text', { x: x(r.freight) + 9, y: cy - 7, 'font-size': 11, 'font-weight': 600, fill: '#1f2733', text: fmtGBP(r.freight) }, svg);
+      svgEl('text', { x: x(r.addOn) + 9, y: cy + 15, 'font-size': 11, fill: INK2, text: fmtGBP(r.addOn) }, svg);
+    }
+    const hit = svgEl('rect', { x: 0, y: i * rowH, width, height: rowH, fill: 'transparent' }, svg);
+    hover(hit, () => [
+      `Freight ${fmtGBP(r.freight)} · add-ons ${fmtGBP(r.addOn)} avg`,
+      r.route,
+      `${r.n} costed shipment${r.n === 1 ? '' : 's'} · avg total ${fmtGBP(r.freight + r.addOn)}`,
+    ]);
+  });
+}
+
+function renderTransit() {
+  const { body } = cardShell('card-transit', 'Average transit time per route', 'weeks, sailing date to port ETA', null);
+  const ships = filteredShipments().filter((s) => s.route && s.transitWeeks != null);
+  if (!ships.length) {
+    emptyState(body, 'No transit times yet. Needs both a sailing date and a port ETA on at least one shipment; they populate automatically from the Orderwise feed.');
+    return;
+  }
+  const byRoute = new Map();
+  for (const s of ships) {
+    if (!byRoute.has(s.route)) byRoute.set(s.route, { n: 0, sum: 0, surcharge: false });
+    const r = byRoute.get(s.route);
+    r.n += 1; r.sum += s.transitWeeks;
+    if (s.transitSurchargeWeeks > 0) r.surcharge = true;
+  }
+  const rows = [...byRoute.entries()]
+    .map(([route, r]) => ({ route, n: r.n, avg: r.sum / r.n, surcharge: r.surcharge }))
+    .sort((a, b) => b.avg - a.avg);
+  const maxAvg = Math.max(...rows.map((r) => r.avg));
+
+  const t = el('table', { class: 'twin' }, body);
+  const trh = el('tr', {}, el('thead', {}, t));
+  el('th', { text: 'Route' }, trh);
+  el('th', { class: 'num', text: 'Shipments' }, trh);
+  el('th', { class: 'num', text: 'Avg transit (wks)' }, trh);
+  el('th', { text: '' }, trh);
+  const tbody = el('tbody', {}, t);
+  for (const r of rows) {
+    const tr = el('tr', {}, tbody);
+    el('td', { text: r.route + (r.surcharge ? ' *' : '') }, tr);
+    el('td', { class: 'num', text: fmtNum(r.n) }, tr);
+    el('td', { class: 'num', text: fmtWeeks(r.avg) }, tr);
+    const barCell = el('td', { style: 'width:34%' }, tr);
+    const svg = svgEl('svg', { width: '100%', height: 14, viewBox: '0 0 100 14', preserveAspectRatio: 'none' }, barCell);
+    svgEl('path', { d: barPath(0, 2, Math.max(2, (r.avg / maxAvg) * 100), 10, 3), fill: r.avg === maxAvg ? NAVY : GREY }, svg);
+    hover(tr, () => [
+      fmtWeeks(r.avg) + ' weeks average',
+      r.route,
+      `${r.n} shipment${r.n === 1 ? '' : 's'} with sailing date and port ETA`,
+    ]);
+  }
+  const notes = state.data.transitNotes || {};
+  const noteBits = [notes.rail, notes.feeder].filter(Boolean).join('; ');
+  if (noteBits) el('div', { class: 'footnote', text: '* ' + noteBits + '.' }, body);
+}
+
+/* ---------- KPI row & meta ---------- */
+
+function renderKpis() {
+  const k = state.data.kpis;
+  const wrap = document.getElementById('kpis');
+  wrap.textContent = '';
+  const tiles = [
+    { label: 'Forwarders on file', value: fmtNum(k.forwardersOnFile) },
+    { label: 'Shipments on file', value: fmtNum(k.shipmentsOnFile) },
+    { label: 'Containers on the water', value: fmtNum(k.containersOnWater) },
+    { label: 'Total spend on file', value: fmtGBP(k.totalSpend), sub: `${fmtNum(k.costedShipments)} costed shipments` },
+    { label: 'Avg cost / shipment', value: fmtGBP(k.avgCostPerShipment) },
+    { label: 'Avg transit', value: k.avgTransitWeeks == null ? '–' : fmtWeeks(k.avgTransitWeeks) + ' wks', sub: 'sailing to port ETA, adjusted' },
+  ];
+  for (const tdef of tiles) {
+    const tile = el('div', { class: 'tile' }, wrap);
+    el('div', { class: 'label', text: tdef.label }, tile);
+    el('div', { class: 'value', text: tdef.value }, tile);
+    if (tdef.sub) el('div', { class: 'subnote', text: tdef.sub }, tile);
+  }
+}
+
+function renderMeta() {
+  const m = state.data.meta;
+  const bits = [];
+  if (m.dataMode === 'bigquery') bits.push('Live from Orderwise via BigQuery');
+  const asOf = fmtDateTime(m.dataAsOf);
+  if (asOf) bits.push('data as of ' + asOf);
+  bits.push('refreshed ' + fmtDateTime(m.fetchedAt));
+  document.getElementById('meta-line').textContent = bits.join(' · ');
+  document.getElementById('sample-badge').style.display = m.dataMode === 'sample' ? '' : 'none';
+}
+
+function renderRouteFilter() {
+  const sel = document.getElementById('route-filter');
+  const current = state.route;
+  sel.textContent = '';
+  el('option', { value: 'all', text: 'All routes' }, sel);
+  const counts = groupCount(state.data.shipments, (s) => s.route);
+  for (const [route, n] of counts) el('option', { value: route, text: `${route}  (${n})` }, sel);
+  const noRoute = state.data.shipments.filter((s) => !s.route).length;
+  if (noRoute) el('option', { value: '__none__', text: `No route captured  (${noRoute})` }, sel);
+  sel.value = [...sel.options].some((o) => o.value === current) ? current : 'all';
+  state.route = sel.value;
+}
+
+/* ---------- orchestration ---------- */
+
+function render() {
+  if (!state.data) return;
+  renderMeta();
+  renderKpis();
+  renderRouteFilter();
+  renderForwarders();
+  renderRoutes();
+  renderTrend();
+  renderSplit();
+  renderTransit();
+}
+
+async function load(refresh) {
+  const bodies = document.querySelectorAll('.chart-body');
+  bodies.forEach((b) => b.classList.add('loading'));
+  const errBox = document.getElementById('error');
+  try {
+    const res = await fetch('/api/overview' + (refresh ? '?refresh=1' : ''));
+    if (!res.ok) {
+      const detail = await res.json().catch(() => ({}));
+      throw new Error(detail.error || res.statusText || 'Request failed');
+    }
+    state.data = await res.json();
+    errBox.style.display = 'none';
+    render();
+  } catch (err) {
+    errBox.style.display = 'block';
+    errBox.textContent = 'Could not load data: ' + err.message +
+      '. If this is a fresh deploy, check the service account has BigQuery access (see README).';
+  } finally {
+    document.querySelectorAll('.chart-body').forEach((b) => b.classList.remove('loading'));
+  }
+}
+
+document.getElementById('route-filter').addEventListener('change', (e) => {
+  state.route = e.target.value;
+  render();
+});
+document.getElementById('refresh-btn').addEventListener('click', () => load(true));
+let resizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(render, 150);
+});
+
+load(false);
+</script>
+</body>
+</html>
