@@ -1,0 +1,17 @@
+{
+  "name": "containers-dashboard",
+  "version": "1.0.0",
+  "description": "Fixmart freight forwarding import dashboard. Read-only web app over the fixmart_bi BigQuery dataset (Orderwise feed).",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "DATA_MODE=sample node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@google-cloud/bigquery": "^7.9.0",
+    "express": "^4.19.2"
+  }
+}

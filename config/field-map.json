@@ -1,0 +1,28 @@
+{
+  "_readme": "Maps dashboard fields onto warehouse columns. Orderwise stores container analysis fields as generic columns (shpca_c_1..10 text, shpca_n_1..10 numeric, shpca_d_1..10 date, shpca_l_1..10 boolean, shpca_m_1..10 memo). Their meaning is set in Orderwise config, not in the SQL, so confirm the assignments below against real data: run the app in BigQuery mode and open /api/inspect, which profiles each column with sample values. Edit this file and redeploy; no code changes needed.",
+  "analysis": {
+    "departurePort": "shpca_c_1",
+    "domesticPort": "shpca_c_2",
+    "freightForwarder": "shpca_c_3",
+    "forwarderRef": "shpca_c_4",
+    "po": "shpca_c_5",
+    "supplier": "shpca_c_6",
+    "containerType": "shpca_c_7",
+    "country": "shpca_c_8"
+  },
+  "costs": {
+    "_readme": "A cost line (shipping method row) counts as freight when its description contains one of these keywords, case-insensitive. Everything else is an add-on. Lines use the invoiced net when present, otherwise the expected cost.",
+    "freightKeywords": ["freight", "container", "shipping", "ocean", "sea"]
+  },
+  "status": {
+    "_readme": "Statuses that mean a container is on the water. Used in addition to the date rule (shipped but not yet delivered).",
+    "onWater": ["on the water", "shipped", "in transit", "sailed"]
+  },
+  "routes": {
+    "_readme": "Transit-time surcharges by origin, in weeks. Matched as a case-insensitive substring of the departure port.",
+    "railOrigins": ["Mundra"],
+    "railSurchargeWeeks": 2,
+    "feederOrigins": ["Zhapu"],
+    "feederSurchargeWeeks": 2
+  }
+}
