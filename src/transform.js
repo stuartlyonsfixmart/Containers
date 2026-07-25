@@ -162,6 +162,59 @@ function buildKpis(shipments) {
   };
 }
 
+// Monthly aggregates for the Trends tab. Uses ALL shipments (not the live-book
+// scope): trends are about the past. Windowed to the most recent `windowMonths`.
+function buildTrends(all, windowMonths) {
+  const now = new Date();
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (windowMonths - 1), 1));
+  const buckets = new Map();
+  for (const s of all) {
+    if (!s.shipped) continue;
+    const d = new Date(s.shipped);
+    if (Number.isNaN(d.getTime()) || d < start) continue;
+    const key = d.toISOString().slice(0, 7);
+    if (!buckets.has(key)) {
+      buckets.set(key, { n: 0, costedN: 0, freight: 0, addOn: 0, total: 0, transitN: 0, transit: 0 });
+    }
+    const b = buckets.get(key);
+    b.n += 1;
+    if (s.totalCost != null) {
+      b.costedN += 1;
+      b.freight += s.freightCost || 0;
+      b.addOn += s.addOnCost || 0;
+      b.total += s.totalCost;
+    }
+    if (s.transitWeeks != null) {
+      b.transitN += 1;
+      b.transit += s.transitWeeks;
+    }
+  }
+  if (!buckets.size) return { windowMonths, months: [] };
+
+  // continuous month axis from the first month with data to the current month
+  const keys = [...buckets.keys()].sort();
+  const months = [];
+  const cur = new Date(keys[0] + '-01T00:00:00Z');
+  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  while (cur <= end) {
+    const key = cur.toISOString().slice(0, 7);
+    const b = buckets.get(key) || { n: 0, costedN: 0, freight: 0, addOn: 0, total: 0, transitN: 0, transit: 0 };
+    months.push({
+      month: key,
+      n: b.n,
+      costedN: b.costedN,
+      avgFreight: b.costedN ? Math.round(b.freight / b.costedN) : null,
+      avgAddOn: b.costedN ? Math.round(b.addOn / b.costedN) : null,
+      avgTotal: b.costedN ? Math.round(b.total / b.costedN) : null,
+      totalSpend: b.costedN ? Math.round(b.total) : null,
+      avgTransit: b.transitN ? Math.round((b.transit / b.transitN) * 10) / 10 : null,
+      transitN: b.transitN,
+    });
+    cur.setUTCMonth(cur.getUTCMonth() + 1);
+  }
+  return { windowMonths, months };
+}
+
 function buildOverview(raw, fieldMap, opts = {}) {
   const all = buildShipments(raw, fieldMap);
   const scope = opts.scope || 'all';
@@ -180,6 +233,7 @@ function buildOverview(raw, fieldMap, opts = {}) {
   return {
     kpis: buildKpis(shipments),
     shipments,
+    trends: buildTrends(all, opts.trendMonths || 24),
     scopeInfo: { scope, months: opts.scopeMonths || 12, excluded: all.length - shipments.length },
     transitNotes: {
       rail: `${(fieldMap.routes || {}).railOrigins?.join(', ') || ''}-origin routes include +${(fieldMap.routes || {}).railSurchargeWeeks ?? 2} weeks for rail transit to port`,

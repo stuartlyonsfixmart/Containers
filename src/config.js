@@ -42,5 +42,7 @@ module.exports = {
   // received, plus anything sailed in the last SCOPE_MONTHS. 'all' shows history.
   dataScope: String(process.env.DATA_SCOPE || 'live').toLowerCase(),
   scopeMonths: parseInt(process.env.SCOPE_MONTHS || '12', 10),
+  // Trends tab window: monthly aggregates over full history, capped to this many months.
+  trendMonths: parseInt(process.env.TREND_MONTHS || '24', 10),
   fieldMap: loadFieldMap(),
 };

@@ -28,6 +28,7 @@ async function getData(forceRefresh) {
     overview: buildOverview(raw, config.fieldMap, {
       scope: config.dataScope,
       scopeMonths: config.scopeMonths,
+      trendMonths: config.trendMonths,
     }),
     fetchedAt: Date.now(),
   };
