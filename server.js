@@ -92,6 +92,29 @@ app.get('/api/inspect', async (req, res) => {
   }
 });
 
+// Raw shipment records as CSV for Excel; respects the live-book scope.
+app.get('/api/shipments.csv', async (req, res) => {
+  try {
+    const { overview } = await getData(req.query.refresh === '1');
+    const cols = ['po', 'containerNumber', 'boxNumber', 'supplier', 'forwarder', 'forwarderRef',
+      'route', 'departurePort', 'domesticPort', 'vessel', 'status', 'shipped', 'eta', 'delivered',
+      'freightCost', 'addOnCost', 'totalCost', 'transitWeeks'];
+    const esc = (v) => {
+      if (v == null) return '';
+      const s = String(v);
+      return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    };
+    const lines = [cols.join(',')];
+    for (const s of overview.shipments) lines.push(cols.map((c) => esc(s[c])).join(','));
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="containers-shipments.csv"');
+    res.send(lines.join('\n'));
+  } catch (err) {
+    console.error('csv failed:', err);
+    res.status(500).json({ error: err.message || 'Failed to export CSV' });
+  }
+});
+
 app.get('/healthz', (req, res) => res.json({ ok: true, dataMode: config.dataMode }));
 
 app.use(express.static(path.join(__dirname, 'public')));

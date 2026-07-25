@@ -91,13 +91,23 @@
     flex-wrap: wrap;
   }
   .filters label { font-size: 12.5px; color: var(--ink-2); font-weight: 600; }
-  .filters select {
+  .filters select, .filters input {
     font: inherit; font-size: 13px; color: var(--ink);
     background: var(--surface);
     border: 1px solid var(--hairline); border-radius: 7px;
-    padding: 7px 10px; min-width: 260px;
+    padding: 7px 10px; min-width: 240px;
   }
   .filters .scope-note { font-size: 12px; color: var(--ink-3); }
+  .filters a.dl {
+    font-size: 12.5px; color: var(--ink-2); text-decoration: none;
+    border: 1px solid var(--hairline); border-radius: 7px;
+    background: var(--surface); padding: 7px 12px;
+  }
+  .filters a.dl:hover { color: var(--ink); border-color: var(--ink-3); }
+  .stage-chips { display: flex; gap: 26px; margin: 4px 0 12px; flex-wrap: wrap; }
+  .stage-chips .chip { font-size: 11.5px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .4px; }
+  .stage-chips .chip b { display: block; font-size: 20px; font-weight: 650; color: var(--ink); letter-spacing: 0; text-transform: none; }
+  .refresh-note { font-size: 12px; color: rgba(255,255,255,.85); max-width: 320px; text-align: right; }
 
   .grid {
     display: grid;
@@ -174,8 +184,9 @@
     </div>
   </div>
   <div class="header-actions">
+    <span class="refresh-note" id="refresh-note"></span>
     <span class="badge-sample" id="sample-badge" style="display:none">Sample data · not connected to BigQuery</span>
-    <button class="refresh" id="refresh-btn" type="button">Refresh data</button>
+    <button class="refresh" id="refresh-btn" type="button">Check for new data</button>
   </div>
 </header>
 
@@ -186,10 +197,13 @@
   <div class="filters">
     <label for="route-filter">Route</label>
     <select id="route-filter"></select>
-    <span class="scope-note">Filters the charts below · headline figures above stay whole-book</span>
+    <input id="ship-search" type="search" placeholder="Find PO, container, box or supplier">
+    <a class="dl" href="/api/shipments.csv" download>Download CSV</a>
+    <span class="scope-note" id="filter-note">Filters the sections below · headline figures above stay whole-book</span>
   </div>
 
   <section class="grid">
+    <div class="card wide" id="card-landing"></div>
     <div class="card" id="card-forwarders"></div>
     <div class="card" id="card-routes"></div>
     <div class="card wide" id="card-trend"></div>
@@ -205,7 +219,7 @@
 
 /* ---------- state & utilities ---------- */
 
-const state = { data: null, route: 'all', views: {} };
+const state = { data: null, route: 'all', search: '', views: {} };
 
 const NAVY = getComputedStyle(document.documentElement).getPropertyValue('--navy').trim() || '#373431';
 const GREY = getComputedStyle(document.documentElement).getPropertyValue('--bar-grey').trim() || '#CFC9BF';
@@ -338,10 +352,17 @@ function emptyState(body, msg) { el('div', { class: 'empty', text: msg }, body);
 /* ---------- aggregation from per-shipment records ---------- */
 
 function filteredShipments() {
-  const all = state.data.shipments;
-  if (state.route === 'all') return all;
-  if (state.route === '__none__') return all.filter((s) => !s.route);
-  return all.filter((s) => s.route === state.route);
+  let ships = state.data.shipments;
+  if (state.route === '__none__') ships = ships.filter((s) => !s.route);
+  else if (state.route !== 'all') ships = ships.filter((s) => s.route === state.route);
+  const q = state.search.trim().toLowerCase();
+  if (q) {
+    ships = ships.filter((s) =>
+      [s.po, s.containerNumber, s.boxNumber, s.supplier, s.forwarder, s.forwarderRef, s.vessel]
+        .some((v) => v && String(v).toLowerCase().includes(q))
+    );
+  }
+  return ships;
 }
 function groupCount(items, keyFn) {
   const m = new Map();
@@ -429,6 +450,61 @@ function renderRoutes() {
     renderBarList(body, rows, { accentIndex: 0 });
   }
   if (noRoute) el('div', { class: 'footnote', text: `${noRoute} shipment${noRoute === 1 ? '' : 's'} with no route captured yet.` }, body);
+}
+
+function renderLanding() {
+  const { body, mode } = cardShell('card-landing', 'Landing soon', 'next arrivals by port ETA', null);
+  const ships = filteredShipments();
+  const now = Date.now();
+
+  // stage counts across the current selection
+  const stages = { confirmed: 0, onWater: 0, atPort: 0, delivered: 0 };
+  for (const s of ships) {
+    if (s.delivered) stages.delivered += 1;
+    else if (s.eta && new Date(s.eta).getTime() <= now) stages.atPort += 1;
+    else if (s.shipped) stages.onWater += 1;
+    else stages.confirmed += 1;
+  }
+  const chips = el('div', { class: 'stage-chips' }, body);
+  for (const [label, n] of [['Awaiting sailing', stages.confirmed], ['On the water', stages.onWater], ['Arrived at port', stages.atPort], ['Delivered', stages.delivered]]) {
+    const chip = el('span', { class: 'chip' }, chips);
+    el('b', { text: fmtNum(n) }, chip);
+    chip.appendChild(document.createTextNode(label));
+  }
+
+  const upcoming = ships
+    .filter((s) => !s.delivered && s.eta)
+    .sort((a, b) => new Date(a.eta) - new Date(b.eta));
+  if (!upcoming.length) {
+    emptyState(body, 'Nothing currently expected: no undelivered shipments with a port ETA in this view.');
+    return;
+  }
+  const LIMIT = 10;
+  const shown = mode === 'table' ? upcoming : upcoming.slice(0, LIMIT);
+  const t = el('table', { class: 'twin' }, body);
+  const trh = el('tr', {}, el('thead', {}, t));
+  for (const h of ['Port ETA', 'PO', 'Supplier', 'Route', 'Forwarder', 'Status']) {
+    el('th', { text: h }, trh);
+  }
+  const tbody = el('tbody', {}, t);
+  for (const s of shown) {
+    const tr = el('tr', {}, tbody);
+    const overdue = new Date(s.eta).getTime() < now;
+    el('td', { text: fmtDate(s.eta) + (overdue ? ' · overdue' : '') }, tr);
+    el('td', { text: s.po || '–' }, tr);
+    el('td', { text: s.supplier || '–' }, tr);
+    el('td', { text: s.route || 'No route captured' }, tr);
+    el('td', { text: s.forwarder || '–' }, tr);
+    el('td', { text: s.status || (s.shipped ? 'On the water' : 'Awaiting sailing') }, tr);
+    hover(tr, () => [
+      (s.po || s.containerNumber || 'Shipment') + ' · ETA ' + fmtDate(s.eta),
+      (s.vessel ? 'Vessel ' + s.vessel + ' · ' : '') + (s.boxNumber || ''),
+      'Sailed ' + fmtDate(s.shipped) + (s.totalCost != null ? ' · total cost ' + fmtGBP(s.totalCost) : ''),
+    ].filter(Boolean));
+  }
+  if (mode !== 'table' && upcoming.length > LIMIT) {
+    el('div', { class: 'footnote', text: `Showing the next ${LIMIT} of ${upcoming.length}; use the Table view for all.` }, body);
+  }
 }
 
 function renderTrend() {
@@ -629,16 +705,23 @@ function renderKpis() {
 function renderMeta() {
   const m = state.data.meta;
   const bits = [];
-  if (m.dataMode === 'bigquery') bits.push('Live from Orderwise via BigQuery');
+  // Lead with the honest freshness figure: when Orderwise last fed the warehouse.
+  const asOf = fmtDateTime(m.dataAsOf);
+  if (asOf) {
+    let feedBit = 'Orderwise data as of ' + asOf;
+    const ageH = (Date.now() - new Date(m.dataAsOf).getTime()) / 3600000;
+    if (ageH > 26) feedBit += ' (feed may be behind, last ran ' + Math.round(ageH) + 'h ago)';
+    bits.push(feedBit);
+  } else if (m.dataMode === 'bigquery') {
+    bits.push('Live from Orderwise via BigQuery');
+  }
+  bits.push('checked ' + fmtDateTime(m.fetchedAt));
   if (m.scope === 'live') {
     let scopeBit = 'live book · sailings in the last ' + m.scopeMonths + ' months';
     const ex = (state.data.scopeInfo || {}).excluded;
     if (ex) scopeBit += ' (' + ex + ' older excluded)';
     bits.push(scopeBit);
   }
-  const asOf = fmtDateTime(m.dataAsOf);
-  if (asOf) bits.push('data as of ' + asOf);
-  bits.push('refreshed ' + fmtDateTime(m.fetchedAt));
   document.getElementById('meta-line').textContent = bits.join(' · ');
   document.getElementById('sample-badge').style.display = m.dataMode === 'sample' ? '' : 'none';
 }
@@ -663,17 +746,35 @@ function render() {
   renderMeta();
   renderKpis();
   renderRouteFilter();
+  renderLanding();
   renderForwarders();
   renderRoutes();
   renderTrend();
   renderSplit();
   renderTransit();
+  const note = document.getElementById('filter-note');
+  const q = state.search.trim();
+  if (q) {
+    const n = filteredShipments().length;
+    note.textContent = `${n} shipment${n === 1 ? '' : 's'} match "${q}" · headline figures above stay whole-book`;
+  } else {
+    note.textContent = 'Filters the sections below · headline figures above stay whole-book';
+  }
+}
+
+let refreshNoteTimer = null;
+function setRefreshNote(text) {
+  const el2 = document.getElementById('refresh-note');
+  el2.textContent = text;
+  clearTimeout(refreshNoteTimer);
+  if (text) refreshNoteTimer = setTimeout(() => { el2.textContent = ''; }, 12000);
 }
 
 async function load(refresh) {
   const bodies = document.querySelectorAll('.chart-body');
   bodies.forEach((b) => b.classList.add('loading'));
   const errBox = document.getElementById('error');
+  const prevAsOf = state.data && state.data.meta ? state.data.meta.dataAsOf : null;
   try {
     const res = await fetch('/api/overview' + (refresh ? '?refresh=1' : ''));
     if (!res.ok) {
@@ -683,6 +784,16 @@ async function load(refresh) {
     state.data = await res.json();
     errBox.style.display = 'none';
     render();
+    if (refresh) {
+      const newAsOf = state.data.meta.dataAsOf;
+      if (newAsOf && prevAsOf && newAsOf === prevAsOf) {
+        setRefreshNote('Checked the warehouse: nothing new from Orderwise since ' + fmtDateTime(newAsOf) + '. New entries appear after the next feed run.');
+      } else if (newAsOf) {
+        setRefreshNote('Updated: Orderwise feed data as of ' + fmtDateTime(newAsOf) + '.');
+      } else {
+        setRefreshNote('Re-checked the warehouse.');
+      }
+    }
   } catch (err) {
     errBox.style.display = 'block';
     errBox.textContent = 'Could not load data: ' + err.message +
@@ -697,6 +808,14 @@ document.getElementById('route-filter').addEventListener('change', (e) => {
   render();
 });
 document.getElementById('refresh-btn').addEventListener('click', () => load(true));
+let searchTimer = null;
+document.getElementById('ship-search').addEventListener('input', (e) => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    state.search = e.target.value;
+    render();
+  }, 150);
+});
 let resizeTimer = null;
 window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);
