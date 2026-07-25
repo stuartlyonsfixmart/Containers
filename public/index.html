@@ -3,43 +3,58 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%231B365D'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/png;base64,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">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Saira:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <title>Freight Forwarding Import Dashboard</title>
 <style>
+  /* Fixmart Visual Identity v.03 (July 2026): Saira, Fixmart Green #C0EF00,
+     Fixmart Charcoal #373431, warm neutrals. Green is never used as text or
+     marks on white (brand accessibility matrix); it lives on charcoal. */
   :root {
-    --navy: #1B365D;
-    --bar-grey: #bcc3cd;
-    --bar-grey-soft: #dde1e7;
-    --ink: #1f2733;
-    --ink-2: #5b6472;
-    --ink-3: #8a93a2;
+    --navy: #373431;          /* Fixmart Charcoal: primary data ink */
+    --green: #C0EF00;         /* Fixmart Green: chrome on charcoal only */
+    --bar-grey: #CFC9BF;      /* Soft Concrete: context marks */
+    --bar-grey-soft: #E9E5DE; /* Light Stone */
+    --ink: #373431;
+    --ink-2: #5E5953;
+    --ink-3: #837D75;
     --surface: #ffffff;
-    --page: #f6f7f9;
-    --hairline: #e6e9ee;
-    --warn-bg: #fdf3d7;
-    --warn-ink: #8a5a06;
+    --page: #E9E5DE;
+    --hairline: #E2DDD5;
+    --warn-bg: #C0EF00;
+    --warn-ink: #373431;
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     background: var(--page);
     color: var(--ink);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: 'Saira', Arial, "Helvetica Neue", sans-serif;
     font-size: 14px;
     line-height: 1.45;
   }
   header {
     background: var(--navy);
     color: #fff;
-    padding: 18px 28px;
+    padding: 16px 28px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 16px;
     flex-wrap: wrap;
+    border-bottom: 2px solid var(--green);
   }
-  header h1 { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: .1px; }
-  header .sub { margin-top: 3px; font-size: 12px; color: rgba(255,255,255,.72); }
+  .brand { display: flex; align-items: center; gap: 18px; min-width: 0; }
+  .brand img.logo { height: 38px; display: block; }
+  .brand-divider { width: 1px; height: 42px; background: rgba(255,255,255,.25); flex-shrink: 0; }
+  header h1 {
+    margin: 0; font-size: 15.5px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .9px;
+    color: var(--green);
+  }
+  header .sub { margin-top: 3px; font-size: 12px; color: rgba(255,255,255,.72); font-weight: 300; }
   .header-actions { display: flex; align-items: center; gap: 10px; }
   .badge-sample {
     background: var(--warn-bg); color: var(--warn-ink);
@@ -52,7 +67,7 @@
     border-radius: 7px; padding: 7px 14px;
     font: inherit; font-size: 13px; cursor: pointer;
   }
-  button.refresh:hover { background: rgba(255,255,255,.1); }
+  button.refresh:hover { border-color: var(--green); color: var(--green); }
   main { max-width: 1240px; margin: 0 auto; padding: 22px 28px 48px; }
 
   .kpis {
@@ -111,7 +126,7 @@
     font: inherit; font-size: 11px; padding: 3px 9px; border: 0;
     background: var(--surface); color: var(--ink-3); cursor: pointer;
   }
-  .toggle button.active { background: #eef1f5; color: var(--ink); font-weight: 600; }
+  .toggle button.active { background: #EFEBE4; color: var(--ink); font-weight: 600; }
   .chart-body { margin-top: 12px; position: relative; }
   .chart-body.loading { opacity: .45; transition: opacity .2s; }
   svg { display: block; overflow: visible; }
@@ -132,7 +147,7 @@
 
   #tooltip {
     position: fixed; z-index: 50; pointer-events: none;
-    background: #232a35; color: #fff;
+    background: #373431; color: #fff;
     border-radius: 8px; padding: 8px 11px;
     font-size: 12px; line-height: 1.5;
     max-width: 300px;
@@ -150,9 +165,13 @@
 </head>
 <body>
 <header>
-  <div>
-    <h1>Freight Forwarding Import Dashboard</h1>
-    <div class="sub" id="meta-line">Loading…</div>
+  <div class="brand">
+    <img class="logo" src="data:image/png;base64,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" alt="Fixmart">
+    <div class="brand-divider"></div>
+    <div>
+      <h1>Freight Forwarding Import Dashboard</h1>
+      <div class="sub" id="meta-line">Loading…</div>
+    </div>
   </div>
   <div class="header-actions">
     <span class="badge-sample" id="sample-badge" style="display:none">Sample data · not connected to BigQuery</span>
@@ -174,8 +193,8 @@
     <div class="card" id="card-forwarders"></div>
     <div class="card" id="card-routes"></div>
     <div class="card wide" id="card-trend"></div>
-    <div class="card" id="card-split"></div>
-    <div class="card" id="card-transit"></div>
+    <div class="card wide" id="card-split"></div>
+    <div class="card wide" id="card-transit"></div>
   </section>
 </main>
 
@@ -188,9 +207,9 @@
 
 const state = { data: null, route: 'all', views: {} };
 
-const NAVY = getComputedStyle(document.documentElement).getPropertyValue('--navy').trim() || '#1B365D';
-const GREY = getComputedStyle(document.documentElement).getPropertyValue('--bar-grey').trim() || '#bcc3cd';
-const INK2 = '#5b6472', INK3 = '#8a93a2', HAIR = '#e6e9ee';
+const NAVY = getComputedStyle(document.documentElement).getPropertyValue('--navy').trim() || '#373431';
+const GREY = getComputedStyle(document.documentElement).getPropertyValue('--bar-grey').trim() || '#CFC9BF';
+const INK2 = '#5E5953', INK3 = '#837D75', HAIR = '#E2DDD5';
 
 const fmtGBP = (v) => v == null ? '–' : '£' + Math.round(v).toLocaleString('en-GB');
 const fmtNum = (v) => v == null ? '–' : Number(v).toLocaleString('en-GB');
@@ -366,7 +385,7 @@ function renderBarList(body, rows, opts) {
     svgEl('path', { d: barPath(labelW + gutter, y, w, barH, 4), fill: color }, svg);
     svgEl('text', {
       x: labelW + gutter + w + 7, y: y + barH / 2 + 4,
-      'font-size': 12, fill: '#1f2733', 'font-weight': 600, text: r.valueLabel
+      'font-size': 12, fill: '#373431', 'font-weight': 600, text: r.valueLabel
     }, svg);
 
     const hit = svgEl('rect', { x: 0, y: i * rowH, width, height: rowH, fill: 'transparent' }, svg);
@@ -474,7 +493,7 @@ function renderTrend() {
   const labelPts = [...new Set([maxShip, lastShip])];
   for (const s of labelPts) {
     const cx = x(new Date(s.shipped).getTime()), cy = y(s.freightCost);
-    svgEl('text', { x: cx + 10, y: cy + 4, 'font-size': 11.5, 'font-weight': 600, fill: '#1f2733', text: fmtGBP(s.freightCost) }, svg);
+    svgEl('text', { x: cx + 10, y: cy + 4, 'font-size': 11.5, 'font-weight': 600, fill: '#373431', text: fmtGBP(s.freightCost) }, svg);
   }
 }
 
@@ -528,7 +547,7 @@ function renderSplit() {
     svgEl('circle', { cx: x(r.addOn), cy, r: 5, fill: GREY, stroke: '#fff', 'stroke-width': 2 }, svg);
     svgEl('circle', { cx: x(r.freight), cy, r: 5, fill: NAVY, stroke: '#fff', 'stroke-width': 2 }, svg);
     if (i === 0) {
-      svgEl('text', { x: x(r.freight) + 9, y: cy - 7, 'font-size': 11, 'font-weight': 600, fill: '#1f2733', text: fmtGBP(r.freight) }, svg);
+      svgEl('text', { x: x(r.freight) + 9, y: cy - 7, 'font-size': 11, 'font-weight': 600, fill: '#373431', text: fmtGBP(r.freight) }, svg);
       svgEl('text', { x: x(r.addOn) + 9, y: cy + 15, 'font-size': 11, fill: INK2, text: fmtGBP(r.addOn) }, svg);
     }
     const hit = svgEl('rect', { x: 0, y: i * rowH, width, height: rowH, fill: 'transparent' }, svg);
@@ -541,10 +560,10 @@ function renderSplit() {
 }
 
 function renderTransit() {
-  const { body } = cardShell('card-transit', 'Average transit time per route', 'weeks, sailing date to port ETA', null);
+  const { body } = cardShell('card-transit', 'Average transit time per route', 'weeks, sailing date to port ETA · hover a row for details', null);
   const ships = filteredShipments().filter((s) => s.route && s.transitWeeks != null);
   if (!ships.length) {
-    emptyState(body, 'No transit times yet. Needs both a sailing date and a port ETA on at least one shipment; they populate automatically from the Orderwise feed.');
+    emptyState(body, 'No transit times yet: needs both a sailing date (BOL) and a port ETA on at least one shipment. They populate automatically from the Orderwise feed.');
     return;
   }
   const byRoute = new Map();
@@ -562,18 +581,18 @@ function renderTransit() {
   const t = el('table', { class: 'twin' }, body);
   const trh = el('tr', {}, el('thead', {}, t));
   el('th', { text: 'Route' }, trh);
-  el('th', { class: 'num', text: 'Shipments' }, trh);
   el('th', { class: 'num', text: 'Avg transit (wks)' }, trh);
   el('th', { text: '' }, trh);
+  el('th', { class: 'num', text: 'Shipments' }, trh);
   const tbody = el('tbody', {}, t);
   for (const r of rows) {
     const tr = el('tr', {}, tbody);
     el('td', { text: r.route + (r.surcharge ? ' *' : '') }, tr);
-    el('td', { class: 'num', text: fmtNum(r.n) }, tr);
     el('td', { class: 'num', text: fmtWeeks(r.avg) }, tr);
     const barCell = el('td', { style: 'width:34%' }, tr);
     const svg = svgEl('svg', { width: '100%', height: 14, viewBox: '0 0 100 14', preserveAspectRatio: 'none' }, barCell);
     svgEl('path', { d: barPath(0, 2, Math.max(2, (r.avg / maxAvg) * 100), 10, 3), fill: r.avg === maxAvg ? NAVY : GREY }, svg);
+    el('td', { class: 'num', text: fmtNum(r.n) }, tr);
     hover(tr, () => [
       fmtWeeks(r.avg) + ' weeks average',
       r.route,
