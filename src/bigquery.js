@@ -78,4 +78,4 @@ async function fetchAll() {
   return { containers, analysis, costLines, statuses, distMethods, dataAsOf };
 }
 
-module.exports = { fetchAll, VIEWS };
+module.exports = { fetchAll, runQuery, VIEWS };

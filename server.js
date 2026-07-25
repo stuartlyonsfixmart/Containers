@@ -93,6 +93,52 @@ app.get('/api/inspect', async (req, res) => {
   }
 });
 
+// Warehouse explorer: lists every Orderwise table in JSON_STAGE (not just the five
+// the dashboard reads) and profiles any table's fields with sample values.
+// Use it to hunt for PO numbers, supplier names, weights and volumes.
+app.get('/api/explore', async (req, res) => {
+  try {
+    if (config.dataMode !== 'bigquery') {
+      return res.json({ note: 'Explore runs against BigQuery only; this instance is serving sample data.' });
+    }
+    const { runQuery } = require('./src/bigquery');
+    const stage = `\`${config.bqProject}.${config.bqDataset}.JSON_STAGE\``;
+    const table = String(req.query.table || '');
+    if (!table) {
+      const tables = await runQuery(
+        `SELECT source_table, COUNT(*) AS row_count,\n                FORMAT_TIMESTAMP('%F %H:%M', MAX(uploaded_at)) AS last_updated\n           FROM ${stage}\n          GROUP BY source_table\n          ORDER BY row_count DESC`
+      );
+      return res.json({
+        hint: 'Every Orderwise table in the warehouse. Add ?table=NAME to see a table’s fields with sample values.',
+        tables,
+      });
+    }
+    if (!/^[A-Za-z0-9_]{1,64}$/.test(table)) {
+      return res.status(400).json({ error: 'Invalid table name' });
+    }
+    const rows = await runQuery(
+      `SELECT json_payload FROM ${stage}\n        WHERE source_table = '${table}'\n        ORDER BY uploaded_at DESC\n        LIMIT 8`
+    );
+    const fields = {};
+    for (const r of rows) {
+      let obj = r.json_payload;
+      if (typeof obj === 'string') {
+        try { obj = JSON.parse(obj); } catch { continue; }
+      }
+      if (!obj || typeof obj !== 'object') continue;
+      for (const [k, v] of Object.entries(obj)) {
+        if (!fields[k]) fields[k] = [];
+        const s = v == null || v === '' ? null : String(v).slice(0, 80);
+        if (s && !fields[k].includes(s) && fields[k].length < 3) fields[k].push(s);
+      }
+    }
+    res.json({ table, sampledRows: rows.length, fields });
+  } catch (err) {
+    console.error('explore failed:', err);
+    res.status(500).json({ error: err.message || 'Failed to explore warehouse' });
+  }
+});
+
 // Raw shipment records as CSV for Excel; respects the live-book scope.
 app.get('/api/shipments.csv', async (req, res) => {
   try {
