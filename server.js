@@ -25,7 +25,10 @@ async function getData(forceRefresh) {
   const raw = await loadRaw();
   cache = {
     raw,
-    overview: buildOverview(raw, config.fieldMap),
+    overview: buildOverview(raw, config.fieldMap, {
+      scope: config.dataScope,
+      scopeMonths: config.scopeMonths,
+    }),
     fetchedAt: Date.now(),
   };
   return cache;
@@ -37,6 +40,8 @@ app.get('/api/overview', async (req, res) => {
     res.json({
       meta: {
         dataMode: config.dataMode,
+        scope: config.dataScope,
+        scopeMonths: config.scopeMonths,
         fetchedAt: new Date(fetchedAt).toISOString(),
         dataAsOf: raw.dataAsOf || null,
         cacheTtlSeconds: Math.round(config.cacheTtlMs / 1000),

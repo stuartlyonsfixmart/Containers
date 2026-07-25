@@ -38,5 +38,9 @@ module.exports = {
   // 'inline' skips views entirely.
   bqSource: String(process.env.BQ_SOURCE || 'views').toLowerCase(),
   cacheTtlMs: parseInt(process.env.CACHE_TTL_SECONDS || '600', 10) * 1000,
+  // 'live' shows the current book: containers on the water or not yet fully
+  // received, plus anything sailed in the last SCOPE_MONTHS. 'all' shows history.
+  dataScope: String(process.env.DATA_SCOPE || 'live').toLowerCase(),
+  scopeMonths: parseInt(process.env.SCOPE_MONTHS || '12', 10),
   fieldMap: loadFieldMap(),
 };

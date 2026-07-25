@@ -162,11 +162,25 @@ function buildKpis(shipments) {
   };
 }
 
-function buildOverview(raw, fieldMap) {
-  const shipments = buildShipments(raw, fieldMap);
+function buildOverview(raw, fieldMap, opts = {}) {
+  const all = buildShipments(raw, fieldMap);
+  const scope = opts.scope || 'all';
+  let shipments = all;
+  if (scope === 'live') {
+    const months = opts.scopeMonths || 12;
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - months);
+    const cutIso = cutoff.toISOString();
+    shipments = all.filter(
+      (s) =>
+        (s.shipped && s.shipped >= cutIso) ||
+        (!s.shipped && !s.delivered && !s.fullyReceived)
+    );
+  }
   return {
     kpis: buildKpis(shipments),
     shipments,
+    scopeInfo: { scope, months: opts.scopeMonths || 12, excluded: all.length - shipments.length },
     transitNotes: {
       rail: `${(fieldMap.routes || {}).railOrigins?.join(', ') || ''}-origin routes include +${(fieldMap.routes || {}).railSurchargeWeeks ?? 2} weeks for rail transit to port`,
       feeder: `${(fieldMap.routes || {}).feederOrigins?.join(', ') || ''}-origin routes include +${(fieldMap.routes || {}).feederSurchargeWeeks ?? 2} weeks for feeder transhipment to the main port`,
