@@ -611,6 +611,12 @@ function renderMeta() {
   const m = state.data.meta;
   const bits = [];
   if (m.dataMode === 'bigquery') bits.push('Live from Orderwise via BigQuery');
+  if (m.scope === 'live') {
+    let scopeBit = 'live book · sailings in the last ' + m.scopeMonths + ' months';
+    const ex = (state.data.scopeInfo || {}).excluded;
+    if (ex) scopeBit += ' (' + ex + ' older excluded)';
+    bits.push(scopeBit);
+  }
   const asOf = fmtDateTime(m.dataAsOf);
   if (asOf) bits.push('data as of ' + asOf);
   bits.push('refreshed ' + fmtDateTime(m.fetchedAt));
