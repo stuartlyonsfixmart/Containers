@@ -93,9 +93,9 @@ function sampleData() {
       shpca_c_2: forwarder,
       shpca_c_3: routed ? plan.dep : '',
       shpca_c_4: forwarder === 'GEMINI (TRANSGLOBAL)' ? `GT-51${String(id).padStart(2, '0')}` : forwarder === 'DSV (Via UBT)' ? `UBT-88${id}` : `BC-19${id}`,
-      shpca_c_5: `PO10${400 + id}`,
-      shpca_c_6: plan ? plan.supplier : 'Various',
-      shpca_c_7: rnd() < 0.75 ? '40ft HC' : '20ft',
+      shpca_c_5: rnd() < 0.75 ? '40 foot' : '20 foot',
+      shpca_c_6: rnd() < 0.8 ? 'DA11 8HJ <Northfleet>' : 'RH15 9TL <Burgess Hill>',
+      shpca_c_7: plan ? plan.supplier : 'Various',
       shpca_c_8: plan ? plan.country : 'China',
     });
 

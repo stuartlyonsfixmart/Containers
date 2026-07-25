@@ -97,9 +97,9 @@ app.get('/api/inspect', async (req, res) => {
 app.get('/api/shipments.csv', async (req, res) => {
   try {
     const { overview } = await getData(req.query.refresh === '1');
-    const cols = ['po', 'containerNumber', 'boxNumber', 'supplier', 'forwarder', 'forwarderRef',
-      'route', 'departurePort', 'domesticPort', 'vessel', 'status', 'shipped', 'eta', 'delivered',
-      'freightCost', 'addOnCost', 'totalCost', 'transitWeeks'];
+    const cols = ['po', 'containerNumber', 'boxNumber', 'containerType', 'supplier', 'deliveryAddress',
+      'forwarder', 'forwarderRef', 'route', 'departurePort', 'domesticPort', 'vessel', 'status',
+      'shipped', 'eta', 'promised', 'delivered', 'freightCost', 'addOnCost', 'totalCost', 'transitWeeks'];
     const esc = (v) => {
       if (v == null) return '';
       const s = String(v);
