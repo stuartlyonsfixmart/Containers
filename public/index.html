@@ -68,7 +68,15 @@
     font: inherit; font-size: 13px; cursor: pointer;
   }
   button.refresh:hover { border-color: var(--green); color: var(--green); }
-  main { max-width: 1240px; margin: 0 auto; padding: 22px 28px 48px; }
+  main { max-width: 1240px; margin: 0 auto; padding: 18px 28px 48px; }
+  .tabs { display: flex; gap: 24px; border-bottom: 1px solid var(--hairline); margin-bottom: 18px; }
+  .tabs button {
+    background: none; border: 0; font: inherit; font-size: 13.5px; font-weight: 600;
+    color: var(--ink-3); padding: 8px 2px 9px; cursor: pointer;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+    text-transform: uppercase; letter-spacing: .6px;
+  }
+  .tabs button.active { color: var(--ink); border-bottom-color: var(--ink); }
 
   .kpis {
     display: grid;
@@ -192,6 +200,12 @@
 
 <main>
   <div id="error"></div>
+  <nav class="tabs">
+    <button id="tab-btn-overview" class="active" type="button">Overview</button>
+    <button id="tab-btn-trends" type="button">Trends</button>
+  </nav>
+
+  <div id="tab-overview">
   <section class="kpis" id="kpis"></section>
 
   <div class="filters">
@@ -210,6 +224,16 @@
     <div class="card wide" id="card-split"></div>
     <div class="card wide" id="card-transit"></div>
   </section>
+  </div>
+
+  <div id="tab-trends" style="display:none">
+    <section class="grid">
+      <div class="card wide" id="card-tr-cost"></div>
+      <div class="card wide" id="card-tr-volume"></div>
+      <div class="card wide" id="card-tr-transit"></div>
+      <div class="card wide" id="card-tr-spend"></div>
+    </section>
+  </div>
 </main>
 
 <div id="tooltip"></div>
@@ -219,7 +243,7 @@
 
 /* ---------- state & utilities ---------- */
 
-const state = { data: null, route: 'all', search: '', views: {} };
+const state = { data: null, route: 'all', search: '', tab: 'overview', views: {} };
 
 const NAVY = getComputedStyle(document.documentElement).getPropertyValue('--navy').trim() || '#373431';
 const GREY = getComputedStyle(document.documentElement).getPropertyValue('--bar-grey').trim() || '#CFC9BF';
@@ -680,6 +704,144 @@ function renderTransit() {
   if (noteBits) el('div', { class: 'footnote', text: '* ' + noteBits + '.' }, body);
 }
 
+/* ---------- Trends tab: monthly aggregates over the trend window ---------- */
+
+const fmtMonth = (key) => {
+  const d = new Date(key + '-01T00:00:00Z');
+  return d.toLocaleDateString('en-GB', { month: 'short', year: '2-digit', timeZone: 'UTC' });
+};
+
+// Shared monthly chart: type 'line' (multi-series) or 'column' (single series).
+function renderMonthly(body, monthsData, series, opts) {
+  const months = monthsData || [];
+  const hasVals = series.some((s) => s.values.some((v) => v != null && v !== 0));
+  if (!months.length || !hasVals) {
+    emptyState(body, 'Not enough history yet: this fills in as sailings accumulate in the warehouse.');
+    return;
+  }
+  const width = Math.max(640, body.clientWidth || 900);
+  const height = 220, padL = 58, padR = 92, padT = 14, padB = 28;
+  const svg = svgEl('svg', { width: '100%', viewBox: `0 0 ${width} ${height}` }, body);
+  const allVals = series.flatMap((s) => s.values.filter((v) => v != null));
+  let maxV = niceCeil(Math.max(...allVals, 1) * 1.1);
+  if (opts.intTicks) {
+    const tickStep = Math.max(1, Math.ceil((Math.max(...allVals, 1) * 1.1) / 4));
+    maxV = tickStep * 4;
+  }
+  const plotW = width - padL - padR;
+  const x = (i) => months.length === 1 ? padL + plotW / 2 : padL + (i / (months.length - 1)) * plotW;
+  const y = (v) => padT + (1 - v / maxV) * (height - padT - padB);
+
+  svgEl('line', { x1: padL, y1: y(0), x2: width - padR, y2: y(0), stroke: HAIR, 'stroke-width': 1 }, svg);
+  for (let i = 0; i <= 4; i += 1) {
+    svgEl('text', { x: padL - 8, y: y((maxV / 4) * i) + 4, 'text-anchor': 'end', 'font-size': 11, fill: INK3, text: opts.fmt((maxV / 4) * i) }, svg);
+  }
+  const step = Math.max(1, Math.ceil(months.length / 8));
+  months.forEach((m, i) => {
+    if (i % step === 0 || i === months.length - 1) {
+      svgEl('text', { x: x(i), y: height - 8, 'text-anchor': 'middle', 'font-size': 11, fill: INK3, text: fmtMonth(m.month) }, svg);
+    }
+  });
+
+  if (opts.type === 'column') {
+    const vals = series[0].values;
+    const lastIdx = vals.reduce((acc, v, i) => (v != null && v !== 0 ? i : acc), -1);
+    const maxIdx = vals.reduce((acc, v, i) => (v != null && (acc < 0 || v > vals[acc]) ? i : acc), -1);
+    const bw = Math.max(6, Math.min(24, (plotW / months.length) * 0.55));
+    vals.forEach((v, i) => {
+      if (v == null || v === 0) return;
+      const cx = x(i) - bw / 2, yTop = y(v), yBase = y(0);
+      const rr = Math.min(4, bw / 2, (yBase - yTop) / 2);
+      svgEl('path', {
+        d: `M${cx},${yBase} L${cx},${yTop + rr} Q${cx},${yTop} ${cx + rr},${yTop} L${cx + bw - rr},${yTop} Q${cx + bw},${yTop} ${cx + bw},${yTop + rr} L${cx + bw},${yBase} Z`,
+        fill: i === lastIdx ? NAVY : GREY,
+      }, svg);
+      if (i === lastIdx || i === maxIdx) {
+        svgEl('text', { x: x(i), y: yTop - 6, 'text-anchor': 'middle', 'font-size': 11, 'font-weight': 600, fill: '#373431', text: opts.fmt(v) }, svg);
+      }
+    });
+  } else {
+    const endLabelYs = [];
+    for (const s of series) {
+      let d = '', lastPt = null;
+      s.values.forEach((v, i) => {
+        if (v == null) { return; }
+        const px = x(i), py = y(v);
+        d += (d && s.values[i - 1] != null ? ` L${px},${py}` : ` M${px},${py}`);
+        lastPt = { px, py, v };
+      });
+      if (d) svgEl('path', { d: d.trim(), fill: 'none', stroke: s.color, 'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, svg);
+      if (lastPt) {
+        svgEl('circle', { cx: lastPt.px, cy: lastPt.py, r: 4.5, fill: s.color, stroke: '#fff', 'stroke-width': 2 }, svg);
+        let ly = lastPt.py + 4;
+        while (endLabelYs.some((prev) => Math.abs(prev - ly) < 14)) ly += 14;
+        endLabelYs.push(ly);
+        svgEl('text', { x: lastPt.px + 10, y: ly, 'font-size': 11, 'font-weight': 600, fill: '#373431', text: opts.fmt(lastPt.v) }, svg);
+      }
+    }
+  }
+
+  const stripW = months.length === 1 ? plotW : plotW / (months.length - 1);
+  months.forEach((m, i) => {
+    const hit = svgEl('rect', { x: x(i) - stripW / 2, y: 0, width: stripW, height: height - padB, fill: 'transparent' }, svg);
+    hover(hit, () => [
+      fmtMonth(m.month) + ' · ' + fmtNum(m.n) + ' container' + (m.n === 1 ? '' : 's') + ' sailed',
+      ...series.map((s) => s.name + ': ' + (s.values[i] != null ? opts.fmt(s.values[i]) : 'no data')),
+    ]);
+  });
+}
+
+function trendMonths() { return ((state.data || {}).trends || {}).months || []; }
+
+function renderTrCost() {
+  const { body, mode } = cardShell('card-tr-cost', 'Average cost per shipment', 'by sailing month, whole warehouse history (24-month window)',
+    [{ label: 'Freight', color: NAVY }, { label: 'Add-ons', color: GREY }]);
+  const months = trendMonths();
+  if (mode === 'table') {
+    renderTwinTable(body,
+      [{ label: 'Month' }, { label: 'Sailed', num: true }, { label: 'Costed', num: true }, { label: 'Avg freight', num: true }, { label: 'Avg add-ons', num: true }, { label: 'Avg total', num: true }],
+      months.map((m) => [fmtMonth(m.month), fmtNum(m.n), fmtNum(m.costedN), fmtGBP(m.avgFreight), fmtGBP(m.avgAddOn), fmtGBP(m.avgTotal)]));
+    return;
+  }
+  renderMonthly(body, months, [
+    { name: 'Avg freight', color: NAVY, values: months.map((m) => m.avgFreight) },
+    { name: 'Avg add-ons', color: GREY, values: months.map((m) => m.avgAddOn) },
+  ], { fmt: fmtGBP, type: 'line' });
+}
+
+function renderTrVolume() {
+  const { body, mode } = cardShell('card-tr-volume', 'Containers shipped per month', 'by sailing month', null);
+  const months = trendMonths();
+  if (mode === 'table') {
+    renderTwinTable(body, [{ label: 'Month' }, { label: 'Containers', num: true }],
+      months.map((m) => [fmtMonth(m.month), fmtNum(m.n)]));
+    return;
+  }
+  renderMonthly(body, months, [{ name: 'Containers', color: NAVY, values: months.map((m) => m.n) }], { fmt: fmtNum, type: 'column', intTicks: true });
+}
+
+function renderTrTransit() {
+  const { body, mode } = cardShell('card-tr-transit', 'Average transit time', 'weeks, sailing to port ETA, by sailing month', null);
+  const months = trendMonths();
+  if (mode === 'table') {
+    renderTwinTable(body, [{ label: 'Month' }, { label: 'With dates', num: true }, { label: 'Avg transit (wks)', num: true }],
+      months.map((m) => [fmtMonth(m.month), fmtNum(m.transitN), fmtWeeks(m.avgTransit)]));
+    return;
+  }
+  renderMonthly(body, months, [{ name: 'Avg transit (wks)', color: NAVY, values: months.map((m) => m.avgTransit) }], { fmt: fmtWeeks, type: 'line' });
+}
+
+function renderTrSpend() {
+  const { body, mode } = cardShell('card-tr-spend', 'Freight spend per month', 'total of costed shipments, by sailing month', null);
+  const months = trendMonths();
+  if (mode === 'table') {
+    renderTwinTable(body, [{ label: 'Month' }, { label: 'Costed', num: true }, { label: 'Total spend', num: true }],
+      months.map((m) => [fmtMonth(m.month), fmtNum(m.costedN), fmtGBP(m.totalSpend)]));
+    return;
+  }
+  renderMonthly(body, months, [{ name: 'Spend', color: NAVY, values: months.map((m) => m.totalSpend) }], { fmt: fmtGBP, type: 'column' });
+}
+
 /* ---------- KPI row & meta ---------- */
 
 function renderKpis() {
@@ -752,6 +914,10 @@ function render() {
   renderTrend();
   renderSplit();
   renderTransit();
+  renderTrCost();
+  renderTrVolume();
+  renderTrTransit();
+  renderTrSpend();
   const note = document.getElementById('filter-note');
   const q = state.search.trim();
   if (q) {
@@ -802,6 +968,17 @@ async function load(refresh) {
     document.querySelectorAll('.chart-body').forEach((b) => b.classList.remove('loading'));
   }
 }
+
+function setTab(t) {
+  state.tab = t;
+  document.getElementById('tab-overview').style.display = t === 'overview' ? '' : 'none';
+  document.getElementById('tab-trends').style.display = t === 'trends' ? '' : 'none';
+  document.getElementById('tab-btn-overview').classList.toggle('active', t === 'overview');
+  document.getElementById('tab-btn-trends').classList.toggle('active', t === 'trends');
+  render();
+}
+document.getElementById('tab-btn-overview').addEventListener('click', () => setTab('overview'));
+document.getElementById('tab-btn-trends').addEventListener('click', () => setTab('trends'));
 
 document.getElementById('route-filter').addEventListener('change', (e) => {
   state.route = e.target.value;
