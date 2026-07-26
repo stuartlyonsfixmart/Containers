@@ -12,7 +12,17 @@ GitHub (main) --push--> GitHub Actions --deploy--> Cloud Run (this app)
                                           (JSON_STAGE fed by Orderwise)
 ```
 
-One Cloud Run service serves both the static page (`public/index.html`) and a small JSON API (`server.js`). The API reads the five `*_latest` views (SQL kept verbatim in `/sql`), derives one record per container, and the browser does all chart aggregation client-side, so the route filter is instant. Results are cached in memory for 10 minutes; the Refresh button forces a re-query.
+One Cloud Run service serves both the static page and a small JSON API (`server.js`). The API reads the five `*_latest` views (SQL kept verbatim in `/sql`), derives one record per container, and the browser does all chart aggregation client-side, so the route filter is instant. Results are cached in memory for 10 minutes; the Refresh button forces a re-query.
+
+The front end is three files, no build step and no framework:
+
+| File | What it is |
+|---|---|
+| `public/index.html` | ~2.7KB shell: header, tab buttons, filter row, and the empty card divs the script fills |
+| `public/styles.css` | All styling, including the Fixmart identity variables at the top |
+| `public/app.js` | Everything else: fetch, transform, the hand-rolled SVG charts, tables, calendar |
+
+`assets/favicon.png.b64` and `assets/logo.png.b64` are the brand images, stored base64-encoded and decoded once at server boot into the `/favicon.png` and `/logo.png` routes. They are text on purpose. The images used to be inlined into `index.html` as ~9KB of base64, which made the page impossible to edit safely; a truncated copy-paste silently produced a well-formed but wrong PNG and a broken page. Keeping them as separate encoded files means every source file in this repo is plain text, a checksum tells you immediately whether an asset survived a round trip, and editing the page never touches the image data. To replace either image: `base64 -w0 new-logo.png > assets/logo.png.b64`. The route is registered ahead of `express.static`, so a stale PNG left in `public/` is ignored rather than served.
 
 Quotes and forwarder record-keeping are deliberately out of scope for v1. They are not in the warehouse, so they stay in the old HTML file until a phase 2 adds a small writable store (Firestore) per Sienna's spec.
 
@@ -138,3 +148,4 @@ The dataset is small (tens of containers), but every warehouse read scans `JSON_
 - This repo is currently public and the README plus SQL reference the GCP project ID. Nothing here is a credential, but flipping the repo to private is sensible for a business tool.
 - `/sql` is the reference copy of the warehouse views, kept verbatim; the app can run from them directly (`BQ_SOURCE=inline`) if the saved views are ever renamed.
 - No `package-lock.json` is committed yet. Builds work without it; for pinned dependency versions, run `npm install` locally once and commit the generated lockfile.
+- Two files need deleting by hand with a real git client, because the push tooling used to build this repo can add and update files but cannot remove them: `.assemble/` (a stray directory from a failed push) and `public/favicon.png` (740 bytes of base64 text left behind while working out how to commit a binary; the real favicon is served from `assets/`). `git rm -r .assemble public/favicon.png && git commit -m "Remove stray files" && git push`
