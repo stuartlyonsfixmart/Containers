@@ -106,7 +106,11 @@ app.get('/api/explore', async (req, res) => {
     const table = String(req.query.table || '');
     if (!table) {
       const tables = await runQuery(
-        `SELECT source_table, COUNT(*) AS row_count,\n                FORMAT_TIMESTAMP('%F %H:%M', MAX(uploaded_at)) AS last_updated\n           FROM ${stage}\n          GROUP BY source_table\n          ORDER BY row_count DESC`
+        `SELECT source_table, COUNT(*) AS row_count,
+                FORMAT_TIMESTAMP('%F %H:%M', MAX(uploaded_at)) AS last_updated
+           FROM ${stage}
+          GROUP BY source_table
+          ORDER BY row_count DESC`
       );
       return res.json({
         hint: 'Every Orderwise table in the warehouse. Add ?table=NAME to see a table’s fields with sample values.',
@@ -117,7 +121,10 @@ app.get('/api/explore', async (req, res) => {
       return res.status(400).json({ error: 'Invalid table name' });
     }
     const rows = await runQuery(
-      `SELECT json_payload FROM ${stage}\n        WHERE source_table = '${table}'\n        ORDER BY uploaded_at DESC\n        LIMIT 8`
+      `SELECT json_payload FROM ${stage}
+        WHERE source_table = '${table}'
+        ORDER BY uploaded_at DESC
+        LIMIT 8`
     );
     const fields = {};
     for (const r of rows) {
@@ -143,9 +150,10 @@ app.get('/api/explore', async (req, res) => {
 app.get('/api/shipments.csv', async (req, res) => {
   try {
     const { overview } = await getData(req.query.refresh === '1');
-    const cols = ['po', 'containerNumber', 'boxNumber', 'containerType', 'supplier', 'deliveryAddress',
-      'forwarder', 'forwarderRef', 'route', 'departurePort', 'domesticPort', 'vessel', 'status',
-      'shipped', 'eta', 'promised', 'delivered', 'freightCost', 'addOnCost', 'totalCost', 'transitWeeks'];
+    const cols = ['po', 'containerNumber', 'boxNumber', 'containerType', 'supplier', 'supplierAccount',
+      'deliveryAddress', 'forwarder', 'forwarderAccount', 'forwarderRef', 'route', 'departurePort',
+      'domesticPort', 'vessel', 'status', 'shipped', 'eta', 'promised', 'delivered',
+      'freightCost', 'addOnCost', 'totalCost', 'transitWeeks'];
     const esc = (v) => {
       if (v == null) return '';
       const s = String(v);

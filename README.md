@@ -46,6 +46,16 @@ Orderwise stores container analysis fields as generic columns (`shpca_c_1..10`, 
 
 The same file also holds the freight-vs-add-on keyword rules, the on-the-water status list, and the transit surcharges (Mundra +2 weeks rail, Zhapu +2 weeks feeder).
 
+### Supplier and forwarder names
+
+Two of those names do not have to be guessed. Every container carries `shpc_sd_id` and every cost line carries `shpcsm_sd_id`, both pointing at the Orderwise supplier master in `fixmart_bi.supply_detail`. Freight forwarders are set up as suppliers in Orderwise, so one lookup resolves the container's supplier and whoever invoiced the freight.
+
+The `sources` block in `config/field-map.json` decides which wins when both a master record and an analysis column exist. Supplier defaults to `master` because the `c_7` mapping was only ever a guess. Forwarder defaults to `analysis` because `c_2` is confirmed correct and carries the short names the team recognises, with the master name exposed separately as `forwarderAccount` for cross-checking. Whichever source you prefer, the other is the fallback when the preferred one is blank.
+
+`/api/overview` returns a `fieldSources` block counting how many containers resolved through the master, so a join that silently returns nothing shows up as a number rather than as quietly missing names. The CSV export carries both `supplier`/`supplierAccount` and `forwarder`/`forwarderAccount` side by side, which is the quickest way to check the analysis columns against the master in Excel.
+
+If the service account cannot read `supply_detail`, the query fails soft: a warning is logged and every name falls back to the analysis columns.
+
 ## First deploy to Cloud Run (manual, one time)
 
 ```
