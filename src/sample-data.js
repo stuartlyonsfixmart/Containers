@@ -61,6 +61,22 @@ const FORWARDER_SD = {
   BECKCHOICE: 903,
 };
 
+// Stand-in for the Orderwise memo column the import team uses as a running log
+// (mapped as `notes` in config/field-map.json). Shaped like the real thing:
+// newest entry first, one entry per line, hand-typed, inconsistent date formats,
+// initials, named contacts at suppliers and forwarders. Deliberately messy, and
+// deliberately not present on every container, so the empty state gets exercised.
+const NOTE_LOGS = [
+  `23.07.26 Given DSV\n20.07.26 - BA - packing spec finally sent over, with Sienna now\n10.07.26 Latest is next week again GC\n02.07.26 chased Bhawna, no reply`,
+  `21.07.26 GC - ETA revised to 14.08, vessel rolled at transhipment\n14.07.26 PAID IN FULL BY ACCOUNTS\n30.06.26 Booking confirmed with Harry`,
+  `18.07.26 BA - short shipped, 4 pallets to follow on next container\n05.07.26 Given to Gemini, cheaper than the beckchoice quote\n28.06.26 goods ready date confirmed by Abby`,
+  `19.07.26 LCL this one, not enough volume to fill\n11.07.26 GC waiting on commercial invoice from WuJian`,
+  `22.07.26 delivered to Northfleet, devan booked Thursday\n16.07.26 customs query on the fixings line, resolved\n09.07.26 according to beckchoice it sails Friday`,
+  `07.28.25 GOODS READY DATE U.S FORMAT\n15.07.26 Ross confirmed collection`,
+  `17.07.26 - Keeley chasing demurrage credit, £480 disputed\n03.07.26 arrived port, held for inspection 2 days`,
+  `12.07.26 GC - supplier says 3 weeks late, factory shutdown`,
+];
+
 const ADD_ONS = [
   { desc: 'Devan & restack', base: 260 },
   { desc: 'Port & terminal fees', base: 185 },
@@ -129,6 +145,9 @@ function sampleData() {
       shpca_c_6: rnd() < 0.8 ? 'DA11 8HJ <Northfleet>' : 'RH15 9TL <Burgess Hill>',
       shpca_c_7: plan ? plan.supplier : 'Various',
       shpca_c_8: plan ? plan.country : 'China',
+      // Roughly 2 in 3 carry a log, matching the live picture where the memo column
+      // is populated on most but not all containers.
+      shpca_m_1: id % 3 === 0 ? '' : NOTE_LOGS[id % NOTE_LOGS.length],
     });
 
     return id;
