@@ -1,0 +1,224 @@
+  /* Fixmart Visual Identity v.03 (July 2026): Saira, Fixmart Green #C0EF00,
+     Fixmart Charcoal #373431, warm neutrals. Green is never used as text or
+     marks on white (brand accessibility matrix); it lives on charcoal. */
+  :root {
+    --navy: #373431;          /* Fixmart Charcoal: primary data ink */
+    --green: #C0EF00;         /* Fixmart Green: chrome on charcoal only */
+    --bar-grey: #CFC9BF;      /* Soft Concrete: context marks */
+    --bar-grey-soft: #E9E5DE; /* Light Stone */
+    --ink: #373431;
+    --ink-2: #5E5953;
+    --ink-3: #837D75;
+    --surface: #ffffff;
+    --page: #E9E5DE;
+    --hairline: #E2DDD5;
+    --warn-bg: #C0EF00;
+    --warn-ink: #373431;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--ink);
+    font-family: 'Saira', Arial, "Helvetica Neue", sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  header {
+    background: var(--navy);
+    color: #fff;
+    padding: 16px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    border-bottom: 2px solid var(--green);
+  }
+  .brand { display: flex; align-items: center; gap: 18px; min-width: 0; }
+  .brand img.logo { height: 38px; display: block; }
+  .brand-divider { width: 1px; height: 42px; background: rgba(255,255,255,.25); flex-shrink: 0; }
+  header h1 {
+    margin: 0; font-size: 15.5px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .9px;
+    color: var(--green);
+  }
+  header .sub { margin-top: 3px; font-size: 12px; color: rgba(255,255,255,.72); font-weight: 300; }
+  .header-actions { display: flex; align-items: center; gap: 10px; }
+  .badge-sample {
+    background: var(--warn-bg); color: var(--warn-ink);
+    font-size: 11px; font-weight: 650; letter-spacing: .3px;
+    padding: 4px 10px; border-radius: 999px;
+  }
+  button.refresh {
+    background: transparent; color: #fff;
+    border: 1px solid rgba(255,255,255,.45);
+    border-radius: 7px; padding: 7px 14px;
+    font: inherit; font-size: 13px; cursor: pointer;
+  }
+  button.refresh:hover { border-color: var(--green); color: var(--green); }
+  main { max-width: none; margin: 0; padding: 18px 40px 48px; }
+  .tabs { display: flex; gap: 24px; border-bottom: 1px solid var(--hairline); margin-bottom: 18px; }
+  .tabs button {
+    background: none; border: 0; font: inherit; font-size: 13.5px; font-weight: 600;
+    color: var(--ink-3); padding: 8px 2px 9px; cursor: pointer;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+    text-transform: uppercase; letter-spacing: .6px;
+  }
+  .tabs button.active { color: var(--ink); border-bottom-color: var(--ink); }
+  .cal-bar { display: flex; align-items: center; gap: 12px; margin: 2px 0 12px; flex-wrap: wrap; }
+  .cal-bar button.nav {
+    font: inherit; font-size: 14px; border: 1px solid var(--hairline); background: var(--surface);
+    border-radius: 7px; padding: 4px 12px; cursor: pointer; color: var(--ink-2);
+  }
+  .cal-bar button.nav:hover { color: var(--ink); border-color: var(--ink-3); }
+  .cal-bar .cal-month { font-size: 15px; font-weight: 650; min-width: 150px; text-align: center; }
+  .cal-bar select { font: inherit; font-size: 12.5px; border: 1px solid var(--hairline); border-radius: 7px; padding: 5px 8px; background: var(--surface); color: var(--ink); }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .cal-dow { font-size: 11px; font-weight: 600; letter-spacing: .4px; text-transform: uppercase; color: var(--ink-3); padding: 2px 8px; }
+  .cal-cell {
+    min-height: 88px; border: 1px solid var(--hairline); border-radius: 8px;
+    padding: 6px 9px; background: var(--surface); cursor: default;
+  }
+  .cal-cell.has { cursor: pointer; }
+  .cal-cell.has:hover { border-color: var(--ink-3); }
+  .cal-cell.we { background: #F8F7F4; }
+  .cal-cell.blank { background: transparent; border-color: transparent; }
+  .cal-cell.today { border-color: var(--ink); }
+  .cal-cell.sel { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+  .cal-daynum { font-size: 11px; color: var(--ink-3); text-align: right; }
+  .cal-count { font-size: 21px; font-weight: 650; line-height: 1.15; }
+  .cal-sub { font-size: 11px; color: var(--ink-2); }
+  .cal-dots { margin-top: 3px; display: flex; gap: 3px; flex-wrap: wrap; }
+  .cal-dots i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 12px;
+  }
+  .tile {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    padding: 14px 16px 12px;
+  }
+  .tile .label { font-size: 11px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; color: var(--ink-3); }
+  .tile .value { font-size: 26px; font-weight: 650; margin-top: 4px; color: var(--ink); }
+  .tile .subnote { font-size: 11.5px; color: var(--ink-3); margin-top: 2px; }
+
+  .filters {
+    display: flex; align-items: center; gap: 10px;
+    margin: 18px 0 14px;
+    flex-wrap: wrap;
+  }
+  .filters label { font-size: 12.5px; color: var(--ink-2); font-weight: 600; }
+  .filters select, .filters input {
+    font: inherit; font-size: 13px; color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--hairline); border-radius: 7px;
+    padding: 7px 10px; min-width: 240px;
+  }
+  .filters .scope-note { font-size: 12px; color: var(--ink-3); }
+  .filters a.dl {
+    font-size: 12.5px; color: var(--ink-2); text-decoration: none;
+    border: 1px solid var(--hairline); border-radius: 7px;
+    background: var(--surface); padding: 7px 12px;
+  }
+  .filters a.dl:hover { color: var(--ink); border-color: var(--ink-3); }
+  .stage-chips { display: flex; gap: 26px; margin: 4px 0 12px; flex-wrap: wrap; }
+  .stage-chips .chip { font-size: 11.5px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .4px; }
+  .stage-chips .chip b { display: block; font-size: 20px; font-weight: 650; color: var(--ink); letter-spacing: 0; text-transform: none; }
+  .refresh-note { font-size: 12px; color: rgba(255,255,255,.85); max-width: 320px; text-align: right; }
+  .stage-chips .chip .cdot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+  .dot-ovd { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #DE7E2E; margin-right: 6px; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    align-items: start;
+  }
+  @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    padding: 16px 18px 14px;
+    min-width: 0;
+  }
+  .card.wide { grid-column: 1 / -1; }
+  .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .card-head h2 { margin: 0; font-size: 14.5px; font-weight: 650; }
+  .card-head .hint { font-size: 11.5px; color: var(--ink-3); font-weight: 400; margin-left: 6px; }
+  .card-tools { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .legend { display: flex; gap: 12px; font-size: 11.5px; color: var(--ink-2); }
+  .legend .key { display: inline-flex; align-items: center; gap: 5px; }
+  .legend .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .toggle { display: inline-flex; border: 1px solid var(--hairline); border-radius: 7px; overflow: hidden; }
+  .toggle button {
+    font: inherit; font-size: 11px; padding: 3px 9px; border: 0;
+    background: var(--surface); color: var(--ink-3); cursor: pointer;
+  }
+  .toggle button.active { background: #EFEBE4; color: var(--ink); font-weight: 600; }
+  .chart-body { margin-top: 12px; position: relative; }
+  .chart-body.loading { opacity: .45; transition: opacity .2s; }
+  svg { display: block; overflow: visible; }
+  svg text { font-family: inherit; }
+  .footnote { font-size: 11.5px; color: var(--ink-3); margin-top: 10px; }
+  .empty {
+    font-size: 13px; color: var(--ink-2); font-style: italic;
+    padding: 26px 12px; text-align: center;
+  }
+
+  table.twin { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.twin th {
+    text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .4px;
+    color: var(--ink-3); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--hairline);
+  }
+  table.twin td { padding: 6px 8px; border-bottom: 1px solid var(--hairline); color: var(--ink); }
+  table.twin td.num, table.twin th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* Import team notes. The log is free text typed by hand, so it is only ever
+     shown and searched, never parsed: no dates or names are read out of it. */
+  tr.has-notes { cursor: pointer; }
+  tr.has-notes:hover td { background: var(--wash, #F6F5F2); }
+  td.notes-cell {
+    max-width: 230px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    color: var(--ink-2);
+  }
+  td.notes-cell.none { color: var(--ink-3); font-style: italic; }
+  .note-count {
+    display: inline-block; margin-left: 6px; padding: 0 5px; border-radius: 8px;
+    background: var(--hairline); color: var(--ink-3);
+    font-size: 10.5px; font-variant-numeric: tabular-nums; font-style: normal; vertical-align: 1px;
+  }
+  tr.notes-row > td { background: #FBFAF8; padding: 10px 12px 12px; }
+  .note-log { margin: 0; display: grid; gap: 7px; }
+  .note-entry {
+    font-size: 12px; line-height: 1.5; color: var(--ink);
+    padding-left: 10px; border-left: 2px solid var(--hairline);
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .note-entry.latest { border-left-color: #238857; }
+  .note-head {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .4px;
+    color: var(--ink-3); font-weight: 600; margin-bottom: 8px;
+  }
+
+  #tooltip {
+    position: fixed; z-index: 50; pointer-events: none;
+    background: #373431; color: #fff;
+    border-radius: 8px; padding: 8px 11px;
+    font-size: 12px; line-height: 1.5;
+    max-width: 300px;
+    box-shadow: 0 4px 14px rgba(15,23,42,.25);
+    display: none;
+  }
+  #tooltip .t-value { font-size: 13.5px; font-weight: 650; }
+  #tooltip .t-row { color: rgba(255,255,255,.82); }
+  #error {
+    display: none; margin: 14px 0; padding: 12px 16px;
+    background: #fdecec; color: #8c2f2f;
+    border: 1px solid #f3c8c8; border-radius: 8px; font-size: 13px;
+  }
