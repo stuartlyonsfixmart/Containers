@@ -1,5 +1,6 @@
 'use strict';
 
+const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const config = require('./src/config');
@@ -177,6 +178,33 @@ app.get('/api/shipments.csv', async (req, res) => {
 });
 
 app.get('/healthz', (req, res) => res.json({ ok: true, dataMode: config.dataMode }));
+
+// Brand assets are stored base64-encoded in /assets and decoded once at boot.
+// The only write path into this repo is a text-only API, so a real binary cannot
+// be committed; a base64 file is plain text, diffable, and verifiable by checksum.
+// Decoding here rather than at build time keeps dev and Cloud Run identical and
+// means these two files never have to be touched again when the page changes.
+// Registered above express.static so it wins if a stale asset is left in /public.
+const brandAssets = [
+  { route: '/favicon.png', file: 'favicon.png.b64' },
+  { route: '/logo.png', file: 'logo.png.b64' },
+];
+for (const asset of brandAssets) {
+  let buf = null;
+  try {
+    buf = Buffer.from(fs.readFileSync(path.join(__dirname, 'assets', asset.file), 'utf8').trim(), 'base64');
+    if (buf.length < 8 || buf.readUInt32BE(0) !== 0x89504e47) throw new Error('not a PNG after decoding');
+  } catch (err) {
+    console.error(`brand asset ${asset.file} unusable:`, err.message);
+    buf = null;
+  }
+  app.get(asset.route, (req, res) => {
+    if (!buf) return res.status(404).end();
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.send(buf);
+  });
+}
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/api', (req, res) => res.status(404).json({ error: 'Unknown API route' }));
