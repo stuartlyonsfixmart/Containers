@@ -1,6 +1,6 @@
 {
   "_readme": "Maps dashboard fields onto warehouse columns. Orderwise stores container analysis fields as generic columns (shpca_c_1..10 text, shpca_n_1..10 numeric, shpca_d_1..10 date, shpca_l_1..10 boolean, shpca_m_1..10 memo). Their meaning is set in Orderwise config, not in the SQL, so confirm the assignments below against real data: run the app in BigQuery mode and open /api/inspect, which profiles each column with sample values. Edit this file and redeploy; no code changes needed.",
-  "_confirmed": "Confirmed against live data 25 Jul 2026: c_1 = UK/domestic port, c_2 = freight forwarder, c_3 = departure port, c_5 = container type (20/40 foot), c_6 = UK delivery address. Still unconfirmed: PO (left unmapped so it shows blank rather than wrong), supplier (guessed c_7), forwarder ref (guessed c_4). Confirm via /api/inspect and edit here.",
+  "_confirmed": "Confirmed against live data 25 Jul 2026: c_1 = UK/domestic port, c_2 = freight forwarder, c_3 = departure port, c_5 = container type (20/40 foot), c_6 = UK delivery address, m_1 = the import team's free-text operational log (populated on 227 of 256 containers, 197 distinct, newest entry first, display and search only, never parsed). Still unconfirmed: PO (left unmapped so it shows blank rather than wrong), supplier (guessed c_7), forwarder ref (guessed c_4). Empty in every row sampled: c_9, c_10, m_2..m_10, n_2..n_10. Unexplained: n_1 holds 30/60/70/75/90 across 200 containers, left unmapped until someone confirms what it means. Confirm via /api/inspect and edit here.",
   "sources": {
     "_readme": "Where a name comes from when both a master record and an analysis column exist. 'master' uses the Orderwise supplier record in supply_detail (container.shpc_sd_id for the supplier, the biggest freight cost line's shpcsm_sd_id for the forwarder). 'analysis' uses the shpca_c_* column mapped below. Either way the other one is the fallback when the preferred source is blank. Supplier defaults to master because the c_7 mapping is only a guess; forwarder defaults to analysis because c_2 is confirmed correct and carries the names the team recognises.",
     "supplier": "master",
@@ -13,6 +13,7 @@
     "freightForwarder": "shpca_c_2",
     "forwarderRef": "shpca_c_4",
     "po": "",
+    "notes": "shpca_m_1",
     "supplier": "shpca_c_7",
     "containerType": "shpca_c_5",
     "deliveryAddress": "shpca_c_6",
