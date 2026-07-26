@@ -33,6 +33,21 @@ function containsAny(haystack, needles) {
   return (needles || []).some((n) => h.includes(String(n).toLowerCase()));
 }
 
+// The Orderwise memo column mapped to `notes` is the import team's free-text log:
+// one entry per line, newest first, written by hand. Dates inside it are
+// inconsistent (dd.mm.yy, dd/mm/yy, and at least one line self-labelled US format),
+// so this splits into lines and does NOTHING else. No date parsing, no re-sorting,
+// no deriving forwarder names or ETAs from the text. Display and search only:
+// anything computed from prose here would be a confident-looking guess.
+function parseNotes(v) {
+  const raw = cleanText(v);
+  if (!raw) return [];
+  return raw
+    .split(/\r\n|\r|\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
 function buildShipments(raw, fieldMap) {
   const analysisByContainer = new Map();
   for (const row of raw.analysis || []) {
@@ -73,6 +88,7 @@ function buildShipments(raw, fieldMap) {
 
   const a = fieldMap.analysis || {};
   const getA = (row, key) => (row && a[key] ? cleanText(row[a[key]]) : null);
+  const getNotes = (row) => (row && a.notes ? parseNotes(row[a.notes]) : []);
   // Which source wins when both a master record and an analysis column are present.
   // 'master' = the Orderwise supplier record, 'analysis' = the shpca_c_* column.
   const sources = fieldMap.sources || {};
@@ -150,6 +166,7 @@ function buildShipments(raw, fieldMap) {
 
     const supplierRec = supplierById.get(toNum(c.shpc_sd_id)) || null;
     const forwarderAccount = supplierName(freightSdId) || supplierName(anySdId);
+    const notes = getNotes(an);
 
     shipments.push({
       id,
@@ -169,6 +186,9 @@ function buildShipments(raw, fieldMap) {
       forwarderAccount,
       forwarderRef: getA(an, 'forwarderRef'),
       po: getA(an, 'po'),
+      notes,
+      notesLatest: notes[0] || null,
+      notesCount: notes.length,
       supplier: pick('supplier', supplierRec && supplierRec.name, getA(an, 'supplier')),
       supplierAccount: supplierRec ? supplierRec.name : null,
       supplierIsImport: supplierRec ? supplierRec.isImport : null,
@@ -293,6 +313,10 @@ function buildOverview(raw, fieldMap, opts = {}) {
       forwarderFromMaster: count((s) => !!s.forwarderAccount),
       supplierNamed: count((s) => !!s.supplier),
       forwarderNamed: count((s) => !!s.forwarder),
+      // Notes coverage, so "how many containers actually carry a log" is a number
+      // on the page rather than an assumption. If this is a small fraction of
+      // containers, the Latest update column will be mostly blank by nature.
+      withNotes: count((s) => s.notesCount > 0),
     },
     transitNotes: {
       rail: `${(fieldMap.routes || {}).railOrigins?.join(', ') || ''}-origin routes include +${(fieldMap.routes || {}).railSurchargeWeeks ?? 2} weeks for rail transit to port`,
