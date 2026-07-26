@@ -154,9 +154,15 @@ app.get('/api/shipments.csv', async (req, res) => {
       'deliveryAddress', 'forwarder', 'forwarderAccount', 'forwarderRef', 'route', 'departurePort',
       'domesticPort', 'vessel', 'status', 'shipped', 'eta', 'promised', 'delivered',
       'freightCost', 'addOnCost', 'totalCost', 'transitWeeks'];
+    // The notes column is the import team's candid internal log: it names individuals
+    // at suppliers and forwarders and records disputes. Visible in the app, kept out
+    // of the default export so it is not forwarded by accident in a spreadsheet.
+    // Opt in with ?notes=1.
+    const wantNotes = req.query.notes === '1';
+    if (wantNotes) cols.push('notesCount', 'notesLatest', 'notes');
     const esc = (v) => {
       if (v == null) return '';
-      const s = String(v);
+      const s = Array.isArray(v) ? v.join(' | ') : String(v);
       return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
     };
     const lines = [cols.join(',')];
