@@ -53,10 +53,29 @@ async function fetchView(viewName) {
   return runQuery(inlineSql(viewName));
 }
 
+// Supplier master. Orderwise holds one supplier record for everyone you buy from,
+// including the freight forwarders, so this single table resolves both the
+// container's supplier (shpc_sd_id) and the forwarder who invoiced the freight
+// (shpcsm_sd_id) to a real name. Optional: if the table is not readable the app
+// falls back to the analysis-column guesses and logs a warning.
+async function fetchSuppliers() {
+  try {
+    return await runQuery(
+      `SELECT sd_id, sd_name, sd_country_code, sd_import_supplier
+         FROM \`${config.bqProject}.${config.bqDataset}.supply_detail\``
+    );
+  } catch (err) {
+    console.warn('Could not read supply_detail; falling back to analysis columns:', err.message);
+    return [];
+  }
+}
+
 async function fetchDataAsOf() {
   try {
     const rows = await runQuery(
-      `SELECT FORMAT_TIMESTAMP('%FT%TZ', MAX(uploaded_at)) AS as_of\n         FROM \`${config.bqProject}.${config.bqDataset}.JSON_STAGE\`\n        WHERE source_table IN ('shipping_container','shipping_container_analysis','shipping_container_shipping_method')`
+      `SELECT FORMAT_TIMESTAMP('%FT%TZ', MAX(uploaded_at)) AS as_of
+         FROM \`${config.bqProject}.${config.bqDataset}.JSON_STAGE\`
+        WHERE source_table IN ('shipping_container','shipping_container_analysis','shipping_container_shipping_method')`
     );
     return rows.length ? rows[0].as_of : null;
   } catch (err) {
@@ -67,15 +86,17 @@ async function fetchDataAsOf() {
 }
 
 async function fetchAll() {
-  const [containers, analysis, costLines, statuses, distMethods, dataAsOf] = await Promise.all([
-    fetchView(VIEWS.containers),
-    fetchView(VIEWS.analysis),
-    fetchView(VIEWS.costLines),
-    fetchView(VIEWS.statuses),
-    fetchView(VIEWS.distMethods),
-    fetchDataAsOf(),
-  ]);
-  return { containers, analysis, costLines, statuses, distMethods, dataAsOf };
+  const [containers, analysis, costLines, statuses, distMethods, suppliers, dataAsOf] =
+    await Promise.all([
+      fetchView(VIEWS.containers),
+      fetchView(VIEWS.analysis),
+      fetchView(VIEWS.costLines),
+      fetchView(VIEWS.statuses),
+      fetchView(VIEWS.distMethods),
+      fetchSuppliers(),
+      fetchDataAsOf(),
+    ]);
+  return { containers, analysis, costLines, statuses, distMethods, suppliers, dataAsOf };
 }
 
 module.exports = { fetchAll, runQuery, VIEWS };
