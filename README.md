@@ -56,6 +56,16 @@ The `sources` block in `config/field-map.json` decides which wins when both a ma
 
 If the service account cannot read `supply_detail`, the query fails soft: a warning is logged and every name falls back to the analysis columns.
 
+### Import team notes
+
+`shpca_m_1` is the import team's running log, mapped as `notes`. It is populated on 227 of 256 containers, written newest entry first, one entry per line, by hand. It carries the things no structured column holds: why a vessel rolled, which forwarder won the job and why, who at the supplier is being chased, whether accounts have paid.
+
+The rule for this field is display and search only. `parseNotes` in `src/transform.js` splits on newlines and stops there. Nothing reads a date, a name, a forwarder or a reference number out of the prose, because the text is inconsistent enough to make any of that a confident-looking guess. One live entry is literally self-labelled `07.28.25 GOODS READY DATE U.S FORMAT`, which is the whole argument in a single line. No chart may ever be fed from this field.
+
+In the app, the Landing soon table and the Calendar detail both carry a Latest update column showing the newest line with a `+n` badge for the rest. Hovering a row puts the latest note in the tooltip; clicking expands the full log underneath. The search box matches note text as well as container, box and supplier, which matters because a handful of long numbers (six-digit and `201301…` series) appear inside the notes and are currently the only place a document reference is written down anywhere in the feed.
+
+`notes` is deliberately excluded from `/api/shipments.csv`. The commentary is candid and names individuals at named suppliers, and a spreadsheet gets forwarded. Add `?notes=1` to include `notesCount`, `notesLatest` and `notes` (entries joined with ` | ` so a multi-line log stays on one CSV row). `/api/overview` returns `fieldSources.withNotes` so notes coverage is a number on the page rather than an assumption.
+
 ## First deploy to Cloud Run (manual, one time)
 
 ```
