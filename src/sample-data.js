@@ -29,6 +29,38 @@ const ROUTE_PLAN = [
   { dep: 'Zhapu then feeder to Ningbo (China)', dom: 'Felixstowe', n: 1, freight: 1750, weeks: 4.8, country: 'China', supplier: 'Jiaxing Fixings Ltd' },
 ];
 
+// Stand-in for the Orderwise supply_detail master. Forwarders are suppliers too,
+// which is how a freight cost line resolves to a forwarder name.
+const SUPPLIERS = [
+  { sd_id: 501, sd_name: 'Ningbo Hardware Co', sd_country_code: 'CN', sd_import_supplier: true },
+  { sd_id: 502, sd_name: 'Jiaxing Fixings Ltd', sd_country_code: 'CN', sd_import_supplier: true },
+  { sd_id: 503, sd_name: 'Qingdao Tooling Group', sd_country_code: 'CN', sd_import_supplier: true },
+  { sd_id: 504, sd_name: 'Tianjin Metalworks', sd_country_code: 'CN', sd_import_supplier: true },
+  { sd_id: 505, sd_name: 'Hebei Wire Products', sd_country_code: 'CN', sd_import_supplier: true },
+  { sd_id: 506, sd_name: 'Mundra Fastenings', sd_country_code: 'IN', sd_import_supplier: true },
+  { sd_id: 507, sd_name: 'Various', sd_country_code: 'CN', sd_import_supplier: true },
+  { sd_id: 901, sd_name: 'Transglobal Freight Services Ltd', sd_country_code: 'GB', sd_import_supplier: false },
+  { sd_id: 902, sd_name: 'DSV Air & Sea Ltd', sd_country_code: 'GB', sd_import_supplier: false },
+  { sd_id: 903, sd_name: 'Beckchoice Logistics Ltd', sd_country_code: 'GB', sd_import_supplier: false },
+  { sd_id: 950, sd_name: 'Portside Handling Ltd', sd_country_code: 'GB', sd_import_supplier: false },
+];
+
+const SUPPLIER_SD = {
+  'Ningbo Hardware Co': 501,
+  'Jiaxing Fixings Ltd': 502,
+  'Qingdao Tooling Group': 503,
+  'Tianjin Metalworks': 504,
+  'Hebei Wire Products': 505,
+  'Mundra Fastenings': 506,
+  Various: 507,
+};
+
+const FORWARDER_SD = {
+  'GEMINI (TRANSGLOBAL)': 901,
+  'DSV (Via UBT)': 902,
+  BECKCHOICE: 903,
+};
+
 const ADD_ONS = [
   { desc: 'Devan & restack', base: 260 },
   { desc: 'Port & terminal fees', base: 185 },
@@ -80,7 +112,7 @@ function sampleData() {
       shpc_actual_delivery_datetime: null,
       shpc_vessel: VESSELS[id % VESSELS.length],
       shpc_box_number: `MSKU${String(4400000 + id * 137)}`,
-      shpc_sd_id: 100 + id,
+      shpc_sd_id: SUPPLIER_SD[plan ? plan.supplier : 'Various'] || 507,
       shpc_scs_id: 2,
       shpc_active: true,
       shpc_all_invoices_received: true,
@@ -102,7 +134,7 @@ function sampleData() {
     return id;
   };
 
-  const addCosts = (containerId, freightBase) => {
+  const addCosts = (containerId, freightBase, forwarder) => {
     lineId += 1;
     costLines.push({
       shpcsm_id: lineId,
@@ -110,6 +142,7 @@ function sampleData() {
       shpcsm_description: 'Ocean freight',
       shpcsm_net: jitter(freightBase, 0.12),
       shpcsm_cost: 0,
+      shpcsm_sd_id: FORWARDER_SD[forwarder] || null,
       shpcsm_distribute: true,
       shpcsm_distribution_method: 1,
       shpcsm_include_in_duty_costs: true,
@@ -124,6 +157,7 @@ function sampleData() {
         shpcsm_description: a.desc,
         shpcsm_net: jitter(a.base * 1.6, 0.25),
         shpcsm_cost: 0,
+        shpcsm_sd_id: 950,
         shpcsm_distribute: true,
         shpcsm_distribution_method: 2,
         shpcsm_include_in_duty_costs: false,
@@ -138,7 +172,7 @@ function sampleData() {
       if (plan.dep.startsWith('Ningbo') && k >= 3) forwarder = 'DSV (Via UBT)';
       if (plan.dep.startsWith('Qingdao') && k === 2) forwarder = 'BECKCHOICE';
       const cid = addContainer(plan, forwarder, true);
-      addCosts(cid, plan.freight);
+      addCosts(cid, plan.freight, forwarder);
     }
   }
 
@@ -146,7 +180,7 @@ function sampleData() {
   for (let k = 0; k < 3; k += 1) {
     const cid = addContainer(null, 'GEMINI (TRANSGLOBAL)', false);
     if (k < 2) {
-      addCosts(cid, 2500);
+      addCosts(cid, 2500, 'GEMINI (TRANSGLOBAL)');
     } else {
       const c = containers[containers.length - 1];
       c.shpc_all_invoices_received = false;
@@ -170,6 +204,7 @@ function sampleData() {
     costLines,
     statuses,
     distMethods,
+    suppliers: SUPPLIERS,
     dataAsOf: new Date().toISOString(),
   };
 }

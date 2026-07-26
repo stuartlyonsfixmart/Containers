@@ -54,8 +54,30 @@ function buildShipments(raw, fieldMap) {
     costsByContainer.get(cid).push(line);
   }
 
+  // Supplier master (Orderwise supply_detail). Freight forwarders are suppliers too,
+  // so one lookup resolves both the container's supplier and whoever invoiced freight.
+  const supplierById = new Map();
+  for (const s of raw.suppliers || []) {
+    const sid = toNum(s.sd_id);
+    if (sid == null) continue;
+    supplierById.set(sid, {
+      name: cleanText(s.sd_name),
+      country: cleanText(s.sd_country_code),
+      isImport: s.sd_import_supplier === true || String(s.sd_import_supplier).toLowerCase() === 'true',
+    });
+  }
+  const supplierName = (sdId) => {
+    const rec = sdId == null ? null : supplierById.get(sdId);
+    return rec ? rec.name : null;
+  };
+
   const a = fieldMap.analysis || {};
   const getA = (row, key) => (row && a[key] ? cleanText(row[a[key]]) : null);
+  // Which source wins when both a master record and an analysis column are present.
+  // 'master' = the Orderwise supplier record, 'analysis' = the shpca_c_* column.
+  const sources = fieldMap.sources || {};
+  const pick = (key, masterValue, analysisValue) =>
+    (sources[key] === 'analysis' ? analysisValue || masterValue : masterValue || analysisValue);
   const freightKeywords = (fieldMap.costs || {}).freightKeywords || ['freight'];
   const onWaterStatuses = ((fieldMap.status || {}).onWater || []).map((s) => s.toLowerCase());
   const routesCfg = fieldMap.routes || {};
@@ -78,14 +100,33 @@ function buildShipments(raw, fieldMap) {
     let freightCost = 0;
     let addOnCost = 0;
     let hasCosts = false;
+    // The forwarder is the supplier on the biggest freight line. If nothing is
+    // classified as freight, fall back to the biggest cost line of any kind.
+    let freightSdId = null;
+    let freightSdAmount = -1;
+    let anySdId = null;
+    let anySdAmount = -1;
     for (const line of costsByContainer.get(id) || []) {
       const net = toNum(line.shpcsm_net);
       const cost = toNum(line.shpcsm_cost);
       const amount = net != null && net !== 0 ? net : cost;
       if (amount == null || amount === 0) continue;
       hasCosts = true;
-      if (containsAny(cleanText(line.shpcsm_description), freightKeywords)) freightCost += amount;
-      else addOnCost += amount;
+      const sdId = toNum(line.shpcsm_sd_id) || null;
+      const isFreight = containsAny(cleanText(line.shpcsm_description), freightKeywords);
+      if (isFreight) {
+        freightCost += amount;
+        if (sdId && amount > freightSdAmount) {
+          freightSdId = sdId;
+          freightSdAmount = amount;
+        }
+      } else {
+        addOnCost += amount;
+      }
+      if (sdId && amount > anySdAmount) {
+        anySdId = sdId;
+        anySdAmount = amount;
+      }
     }
 
     let transitWeeks = null;
@@ -107,6 +148,9 @@ function buildShipments(raw, fieldMap) {
       (statusText && onWaterStatuses.includes(statusText.toLowerCase())) ||
       (!!shipped && !delivered);
 
+    const supplierRec = supplierById.get(toNum(c.shpc_sd_id)) || null;
+    const forwarderAccount = supplierName(freightSdId) || supplierName(anySdId);
+
     shipments.push({
       id,
       containerNumber: cleanText(c.shpc_number),
@@ -121,13 +165,16 @@ function buildShipments(raw, fieldMap) {
       eta,
       promised: toIso(c.shpc_date_promised),
       delivered,
-      forwarder: getA(an, 'freightForwarder'),
+      forwarder: pick('forwarder', forwarderAccount, getA(an, 'freightForwarder')),
+      forwarderAccount,
       forwarderRef: getA(an, 'forwarderRef'),
       po: getA(an, 'po'),
-      supplier: getA(an, 'supplier'),
+      supplier: pick('supplier', supplierRec && supplierRec.name, getA(an, 'supplier')),
+      supplierAccount: supplierRec ? supplierRec.name : null,
+      supplierIsImport: supplierRec ? supplierRec.isImport : null,
       containerType: getA(an, 'containerType'),
       deliveryAddress: getA(an, 'deliveryAddress'),
-      country: getA(an, 'country'),
+      country: pick('country', supplierRec && supplierRec.country, getA(an, 'country')),
       departurePort,
       domesticPort,
       route,
@@ -232,11 +279,21 @@ function buildOverview(raw, fieldMap, opts = {}) {
         (!s.shipped && !s.delivered && !s.fullyReceived)
     );
   }
+  // How much of the naming came from the Orderwise supplier master rather than the
+  // free-text analysis columns. Surfaces silently-empty joins instead of hiding them.
+  const count = (fn) => all.filter(fn).length;
   return {
     kpis: buildKpis(shipments),
     shipments,
     trends: buildTrends(all, opts.trendMonths || 24),
     scopeInfo: { scope, months: opts.scopeMonths || 12, excluded: all.length - shipments.length },
+    fieldSources: {
+      containers: all.length,
+      supplierFromMaster: count((s) => !!s.supplierAccount),
+      forwarderFromMaster: count((s) => !!s.forwarderAccount),
+      supplierNamed: count((s) => !!s.supplier),
+      forwarderNamed: count((s) => !!s.forwarder),
+    },
     transitNotes: {
       rail: `${(fieldMap.routes || {}).railOrigins?.join(', ') || ''}-origin routes include +${(fieldMap.routes || {}).railSurchargeWeeks ?? 2} weeks for rail transit to port`,
       feeder: `${(fieldMap.routes || {}).feederOrigins?.join(', ') || ''}-origin routes include +${(fieldMap.routes || {}).feederSurchargeWeeks ?? 2} weeks for feeder transhipment to the main port`,
