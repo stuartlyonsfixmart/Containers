@@ -370,7 +370,13 @@ function renderTrend() {
   const shipsAll = filteredShipments().filter((s) => s.shipped && s.freightCost != null);
   const fwLegend = groupCount(shipsAll, (s) => s.forwarder).slice(0, 4)
     .map(([name]) => ({ label: name, color: forwarderColor(name) }));
-  const { body, mode } = cardShell('card-trend', 'Freight cost per shipment over time', 'landed ocean freight by sailing date · coloured by forwarder', fwLegend);
+  const routeLabel = state.route === 'all' ? 'all routes' : state.route === '__none__' ? 'shipments with no route captured' : state.route;
+  const { body, mode } = cardShell(
+    'card-trend',
+    'Freight cost per shipment over time',
+    `landed ocean freight by sailing date · coloured by forwarder · ${routeLabel} · use the Route filter above to change this`,
+    fwLegend
+  );
   const ships = shipsAll;
   if (!ships.length) return emptyState(body, 'No costed, dated shipments in this view yet.');
 
@@ -412,6 +418,33 @@ function renderTrend() {
     if (t1 > t0) svgEl('text', { x: width - padR, y: height - 8, 'text-anchor': 'end', 'font-size': 11, fill: INK3, text: short(t1) }, svg);
   }
 
+  // Straight best-fit trend line (simple linear regression, cost by sailing date)
+  // across whatever shipments are currently shown, i.e. respecting the Route
+  // filter above. Drawn behind the dots so individual points stay on top.
+  let trendDrawn = false;
+  if (ships.length >= 2) {
+    const n = ships.length;
+    let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+    for (const s of ships) {
+      const tx = new Date(s.shipped).getTime();
+      const ty = s.freightCost;
+      sumX += tx; sumY += ty; sumXY += tx * ty; sumXX += tx * tx;
+    }
+    const denom = n * sumXX - sumX * sumX;
+    if (denom !== 0) {
+      const slope = (n * sumXY - sumX * sumY) / denom;
+      const intercept = (sumY - slope * sumX) / n;
+      const clamp = (v) => Math.min(Math.max(v, 0), maxY);
+      svgEl('line', {
+        x1: x(t0), y1: y(clamp(intercept + slope * t0)),
+        x2: x(t1), y2: y(clamp(intercept + slope * t1)),
+        stroke: '#373431', 'stroke-width': 2, 'stroke-dasharray': '6,4',
+        'stroke-linecap': 'round', opacity: 0.55,
+      }, svg);
+      trendDrawn = true;
+    }
+  }
+
   const maxShip = ships.reduce((a, b) => (b.freightCost > a.freightCost ? b : a));
   const lastShip = ships.reduce((a, b) => (new Date(b.shipped) > new Date(a.shipped) ? b : a));
 
@@ -432,6 +465,9 @@ function renderTrend() {
   for (const s of labelPts) {
     const cx = x(new Date(s.shipped).getTime()), cy = y(s.freightCost);
     svgEl('text', { x: cx + 10, y: cy + 4, 'font-size': 11.5, 'font-weight': 600, fill: '#373431', text: fmtGBP(s.freightCost) }, svg);
+  }
+  if (trendDrawn) {
+    el('div', { class: 'footnote', text: 'Dashed line: straight best-fit trend across the shipments shown above.' }, body);
   }
 }
 
