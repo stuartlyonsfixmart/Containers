@@ -191,10 +191,14 @@ function attachNoteExpander(tbody, tr, s, colspan) {
 
 /* ---------- aggregation from per-shipment records ---------- */
 
-function filteredShipments() {
+function filteredShipments(routeOverride) {
+  // Optional override so a single card (the freight cost trend chart) can filter
+  // by its own route selection without touching the page-wide Route filter that
+  // every other caller of this function still uses by default.
+  const activeRoute = routeOverride == null ? state.route : routeOverride;
   let ships = state.data.shipments;
-  if (state.route === '__none__') ships = ships.filter((s) => !s.route);
-  else if (state.route !== 'all') ships = ships.filter((s) => s.route === state.route);
+  if (activeRoute === '__none__') ships = ships.filter((s) => !s.route);
+  else if (activeRoute !== 'all') ships = ships.filter((s) => s.route === activeRoute);
   const q = state.search.trim().toLowerCase();
   if (q) {
     ships = ships.filter((s) =>
@@ -367,18 +371,41 @@ function renderLanding() {
 }
 
 function renderTrend() {
-  const shipsAll = filteredShipments().filter((s) => s.shipped && s.freightCost != null);
+  if (state.trendRoute == null) state.trendRoute = 'all';
+  const shipsAll = filteredShipments(state.trendRoute).filter((s) => s.shipped && s.freightCost != null);
   const fwLegend = groupCount(shipsAll, (s) => s.forwarder).slice(0, 4)
     .map(([name]) => ({ label: name, color: forwarderColor(name) }));
-  const routeLabel = state.route === 'all' ? 'all routes' : state.route === '__none__' ? 'shipments with no route captured' : state.route;
   const { body, mode } = cardShell(
     'card-trend',
     'Freight cost per shipment over time',
-    `landed ocean freight by sailing date · coloured by forwarder · ${routeLabel} · use the Route filter above to change this`,
+    'landed ocean freight by sailing date · coloured by forwarder',
     fwLegend
   );
+
+  // Route selector for this card only. Deliberately separate from the page-wide
+  // Route filter above the card grid, which drives several other cards at once:
+  // this one only narrows this chart, so a single route's freight cost trend can
+  // be read on its own without affecting anything else on the page.
+  const routeBar = el('div', { style: 'display:flex;align-items:center;gap:8px;margin:2px 0 14px;flex-wrap:wrap;' }, body);
+  el('label', { text: 'Route (this chart only)', style: 'font-size:12.5px;color:var(--ink-2);font-weight:600;' }, routeBar);
+  const routeSel = el('select', {
+    style: 'font:inherit;font-size:13px;color:var(--ink);background:var(--surface);border:1px solid var(--hairline);border-radius:7px;padding:6px 9px;min-width:240px;'
+  }, routeBar);
+  const costedShipments = state.data.shipments.filter((s) => s.shipped && s.freightCost != null);
+  el('option', { value: 'all', text: `All routes  (${costedShipments.length})` }, routeSel);
+  const routeCounts = groupCount(costedShipments, (s) => s.route);
+  for (const [route, n] of routeCounts) el('option', { value: route, text: `${route}  (${n})` }, routeSel);
+  const noRouteN = costedShipments.filter((s) => !s.route).length;
+  if (noRouteN) el('option', { value: '__none__', text: `No route captured  (${noRouteN})` }, routeSel);
+  routeSel.value = [...routeSel.options].some((o) => o.value === state.trendRoute) ? state.trendRoute : 'all';
+  state.trendRoute = routeSel.value;
+  routeSel.addEventListener('change', (e) => {
+    state.trendRoute = e.target.value;
+    render();
+  });
+
   const ships = shipsAll;
-  if (!ships.length) return emptyState(body, 'No costed, dated shipments in this view yet.');
+  if (!ships.length) return emptyState(body, 'No costed, dated shipments for this route yet.');
 
   if (mode === 'table') {
     renderTwinTable(body,
