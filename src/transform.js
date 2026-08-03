@@ -88,6 +88,7 @@ function buildShipments(raw, fieldMap) {
 
   const a = fieldMap.analysis || {};
   const getA = (row, key) => (row && a[key] ? cleanText(row[a[key]]) : null);
+  const getADate = (row, key) => (row && a[key] ? toIso(row[a[key]]) : null);
   const getNotes = (row) => (row && a.notes ? parseNotes(row[a.notes]) : []);
   // Which source wins when both a master record and an analysis column are present.
   // 'master' = the Orderwise supplier record, 'analysis' = the shpca_c_* column.
@@ -182,6 +183,7 @@ function buildShipments(raw, fieldMap) {
       eta,
       promised: toIso(c.shpc_date_promised),
       delivered,
+      dateAwarded: getADate(an, 'dateAwarded'),
       forwarder: pick('forwarder', forwarderAccount, getA(an, 'freightForwarder')),
       forwarderAccount,
       forwarderRef: getA(an, 'forwarderRef'),

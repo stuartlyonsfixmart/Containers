@@ -372,26 +372,33 @@ function renderLanding() {
 
 function renderTrend() {
   if (state.trendRoute == null) state.trendRoute = 'all';
-  const shipsAll = filteredShipments(state.trendRoute).filter((s) => s.shipped && s.freightCost != null);
+  if (state.trendDateBasis == null) state.trendDateBasis = 'shipped';
+  // Which date drives this chart's x-axis: 'shipped' (sailing date, always
+  // populated) or 'awarded' (date the freight forwarder was awarded the job,
+  // shpca_d_4 — only recently started being captured, so it's blank on most
+  // historical shipments and the chart will be sparser until more back-fills in.
+  const dateField = state.trendDateBasis === 'awarded' ? 'dateAwarded' : 'shipped';
+  const dateBasisLabel = state.trendDateBasis === 'awarded' ? 'date forwarder awarded' : 'sailing date';
+  const shipsAll = filteredShipments(state.trendRoute).filter((s) => s[dateField] && s.freightCost != null);
   const fwLegend = groupCount(shipsAll, (s) => s.forwarder).slice(0, 4)
     .map(([name]) => ({ label: name, color: forwarderColor(name) }));
   const { body, mode } = cardShell(
     'card-trend',
     'Freight cost per shipment over time',
-    'landed ocean freight by sailing date · coloured by forwarder',
+    `landed ocean freight by ${dateBasisLabel} · coloured by forwarder`,
     fwLegend
   );
 
-  // Route selector for this card only. Deliberately separate from the page-wide
-  // Route filter above the card grid, which drives several other cards at once:
-  // this one only narrows this chart, so a single route's freight cost trend can
-  // be read on its own without affecting anything else on the page.
+  // Route and date-basis selectors for this card only. Deliberately separate from
+  // the page-wide Route filter above the card grid, which drives several other
+  // cards at once: these only narrow this chart, so a single route or date basis
+  // can be read on its own without affecting anything else on the page.
   const routeBar = el('div', { style: 'display:flex;align-items:center;gap:8px;margin:2px 0 14px;flex-wrap:wrap;' }, body);
   el('label', { text: 'Route (this chart only)', style: 'font-size:12.5px;color:var(--ink-2);font-weight:600;' }, routeBar);
   const routeSel = el('select', {
     style: 'font:inherit;font-size:13px;color:var(--ink);background:var(--surface);border:1px solid var(--hairline);border-radius:7px;padding:6px 9px;min-width:240px;'
   }, routeBar);
-  const costedShipments = state.data.shipments.filter((s) => s.shipped && s.freightCost != null);
+  const costedShipments = state.data.shipments.filter((s) => s[dateField] && s.freightCost != null);
   el('option', { value: 'all', text: `All routes  (${costedShipments.length})` }, routeSel);
   const routeCounts = groupCount(costedShipments, (s) => s.route);
   for (const [route, n] of routeCounts) el('option', { value: route, text: `${route}  (${n})` }, routeSel);
@@ -404,13 +411,25 @@ function renderTrend() {
     render();
   });
 
+  el('label', { text: 'Date basis (this chart only)', style: 'font-size:12.5px;color:var(--ink-2);font-weight:600;margin-left:8px;' }, routeBar);
+  const dateSel = el('select', {
+    style: 'font:inherit;font-size:13px;color:var(--ink);background:var(--surface);border:1px solid var(--hairline);border-radius:7px;padding:6px 9px;min-width:200px;'
+  }, routeBar);
+  el('option', { value: 'shipped', text: 'Sailing date' }, dateSel);
+  el('option', { value: 'awarded', text: 'Date forwarder awarded' }, dateSel);
+  dateSel.value = state.trendDateBasis;
+  dateSel.addEventListener('change', (e) => {
+    state.trendDateBasis = e.target.value;
+    render();
+  });
+
   const ships = shipsAll;
-  if (!ships.length) return emptyState(body, 'No costed, dated shipments for this route yet.');
+  if (!ships.length) return emptyState(body, `No costed shipments with a ${dateBasisLabel} for this route yet.`);
 
   if (mode === 'table') {
     renderTwinTable(body,
-      [{ label: 'Sailed' }, { label: 'PO' }, { label: 'Route' }, { label: 'Forwarder' }, { label: 'Freight', num: true }, { label: 'Add-ons', num: true }],
-      ships.map((s) => [fmtDate(s.shipped), s.po, s.route || 'No route captured', s.forwarder, fmtGBP(s.freightCost), fmtGBP(s.addOnCost)]));
+      [{ label: state.trendDateBasis === 'awarded' ? 'Awarded' : 'Sailed' }, { label: 'PO' }, { label: 'Route' }, { label: 'Forwarder' }, { label: 'Freight', num: true }, { label: 'Add-ons', num: true }],
+      ships.map((s) => [fmtDate(s[dateField]), s.po, s.route || 'No route captured', s.forwarder, fmtGBP(s.freightCost), fmtGBP(s.addOnCost)]));
     return;
   }
 
@@ -418,7 +437,7 @@ function renderTrend() {
   const height = 240, padL = 46, padR = 70, padT = 14, padB = 30;
   const svg = svgEl('svg', { width: '100%', viewBox: `0 0 ${width} ${height}` }, body);
 
-  const times = ships.map((s) => new Date(s.shipped).getTime());
+  const times = ships.map((s) => new Date(s[dateField]).getTime());
   const t0 = Math.min(...times), t1 = Math.max(...times);
   const span = Math.max(t1 - t0, 86400000);
   const maxY = niceCeil(Math.max(...ships.map((s) => s.freightCost)) * 1.08);
@@ -445,15 +464,16 @@ function renderTrend() {
     if (t1 > t0) svgEl('text', { x: width - padR, y: height - 8, 'text-anchor': 'end', 'font-size': 11, fill: INK3, text: short(t1) }, svg);
   }
 
-  // Straight best-fit trend line (simple linear regression, cost by sailing date)
-  // across whatever shipments are currently shown, i.e. respecting the Route
-  // filter above. Drawn behind the dots so individual points stay on top.
+  // Straight best-fit trend line (simple linear regression, cost against
+  // whichever date basis is selected above) across whatever shipments are
+  // currently shown, i.e. respecting the Route filter above. Drawn behind the
+  // dots so individual points stay on top.
   let trendDrawn = false;
   if (ships.length >= 2) {
     const n = ships.length;
     let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
     for (const s of ships) {
-      const tx = new Date(s.shipped).getTime();
+      const tx = new Date(s[dateField]).getTime();
       const ty = s.freightCost;
       sumX += tx; sumY += ty; sumXY += tx * ty; sumXX += tx * tx;
     }
@@ -473,24 +493,24 @@ function renderTrend() {
   }
 
   const maxShip = ships.reduce((a, b) => (b.freightCost > a.freightCost ? b : a));
-  const lastShip = ships.reduce((a, b) => (new Date(b.shipped) > new Date(a.shipped) ? b : a));
+  const lastShip = ships.reduce((a, b) => (new Date(b[dateField]) > new Date(a[dateField]) ? b : a));
 
   for (const s of ships) {
-    const cx = x(new Date(s.shipped).getTime()), cy = y(s.freightCost);
+    const cx = x(new Date(s[dateField]).getTime()), cy = y(s.freightCost);
     svgEl('circle', { cx, cy, r: 5, fill: forwarderColor(s.forwarder), stroke: '#fff', 'stroke-width': 2 }, svg);
     const hit = svgEl('circle', { cx, cy, r: 13, fill: 'transparent' }, svg);
     hover(hit, () => [
       fmtGBP(s.freightCost) + ' freight',
       (s.po || s.containerNumber || 'Shipment') + ' · ' + (s.forwarder || 'No forwarder'),
       s.route || 'No route captured',
-      'Sailed ' + fmtDate(s.shipped) + (s.addOnCost != null ? ' · add-ons ' + fmtGBP(s.addOnCost) : ''),
+      (state.trendDateBasis === 'awarded' ? 'Awarded ' : 'Sailed ') + fmtDate(s[dateField]) + (s.addOnCost != null ? ' · add-ons ' + fmtGBP(s.addOnCost) : ''),
       s.onWater ? 'On the water' : (s.status || ''),
     ].filter(Boolean));
   }
   // selective direct labels: the extreme and the latest point only
   const labelPts = [...new Set([maxShip, lastShip])];
   for (const s of labelPts) {
-    const cx = x(new Date(s.shipped).getTime()), cy = y(s.freightCost);
+    const cx = x(new Date(s[dateField]).getTime()), cy = y(s.freightCost);
     svgEl('text', { x: cx + 10, y: cy + 4, 'font-size': 11.5, 'font-weight': 600, fill: '#373431', text: fmtGBP(s.freightCost) }, svg);
   }
   if (trendDrawn) {
